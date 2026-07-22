@@ -1,0 +1,11 @@
+{
+  "contracts": [
+    "TopicRegistry",
+    "ProofVerifier",
+    "SubscriptionHub",
+    "TriggerExecutor",
+    "MockFdcVerification",
+    "MockFtsoV2"
+  ],
+  "generatedAt": "2026-07-22T00:24:16.466Z"
+}

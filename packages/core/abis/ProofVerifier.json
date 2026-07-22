@@ -1,0 +1,253 @@
+{
+  "contractName": "ProofVerifier",
+  "abi": [
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "_fdcVerification",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_mockMode",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "fdcVerification",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IFdcVerification"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "mockMode",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "owner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "preview",
+      "inputs": [
+        {
+          "name": "attestationType",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "proof",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "proofHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "valid",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "alreadyUsed",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setFdcVerification",
+      "inputs": [
+        {
+          "name": "_fdc",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setMockMode",
+      "inputs": [
+        {
+          "name": "enabled",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "transferOwnership",
+      "inputs": [
+        {
+          "name": "newOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "usedProofs",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "verifyAndConsume",
+      "inputs": [
+        {
+          "name": "attestationType",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "proof",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "proofHash",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "FdcVerificationUpdated",
+      "inputs": [
+        {
+          "name": "fdc",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MockModeChanged",
+      "inputs": [
+        {
+          "name": "enabled",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ProofAccepted",
+      "inputs": [
+        {
+          "name": "proofHash",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "attestationType",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "submitter",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "NotOwner",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProofAlreadyUsed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ProofInvalid",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ZeroAddress",
+      "inputs": []
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f80fd5b50604051610896380380610896833981016040819052602b91607d565b600180546001600160a81b0319163360ff60a01b191617600160a01b831515021790556001600160a01b038216156077575f80546001600160a01b0319166001600160a01b0384161790555b505060c1565b5f8060408385031215608d575f80fd5b82516001600160a01b038116811460a2575f80fd5b6020840151909250801515811460b6575f80fd5b809150509250929050565b6107c8806100ce5f395ff3fe608060405234801561000f575f80fd5b5060043610610090575f3560e01c80638da5cb5b116100635780638da5cb5b14610124578063b6925afe14610137578063c30a0f251461014c578063e443147f1461016e578063f2fde38b14610181575f80fd5b80630395afcd146100945780633ad6d516146100c3578063751222c9146100ed5780637b976fe414610111575b5f80fd5b6100a76100a2366004610637565b610194565b6040805192151583529015156020830152015b60405180910390f35b5f546100d5906001600160a01b031681565b6040516001600160a01b0390911681526020016100ba565b60015461010190600160a01b900460ff1681565b60405190151581526020016100ba565b61010161011f366004610637565b6101f3565b6001546100d5906001600160a01b031681565b61014a6101453660046106c2565b6102c6565b005b61010161015a3660046106dd565b60026020525f908152604090205460ff1681565b61014a61017c3660046106f4565b610349565b61014a61018f3660046106f4565b6103e2565b5f8181526002602052604081205460ff1680806101af575082155b156101bc575f91506101ea565b600154600160a01b900460ff16156101d95750508115155f6101ea565b6101e4868686610456565b5f915091505b94509492505050565b5f8181526002602052604081205460ff16156102225760405163c9838a6560e01b815260040160405180910390fd5b6001545f90600160a01b900460ff161561024b57831580159061024457508215155b9050610259565b610256868686610456565b90505b8061027757604051631ff3747d60e21b815260040160405180910390fd5b5f83815260026020526040808220805460ff19166001179055513391889186917fffdaae98d7683d6647498fac18a334fe82b879501f462fbd56ab93ee5074059e91a450600195945050505050565b6001546001600160a01b031633146102f1576040516330cd747160e01b815260040160405180910390fd5b60018054821515600160a01b0260ff60a01b199091161790556040517ffeb56379ba269f698b0d1ab13029ce1653232450ecddf336a1370520aec46e619061033e90831515815260200190565b60405180910390a150565b6001546001600160a01b03163314610374576040516330cd747160e01b815260040160405180910390fd5b6001600160a01b03811661039b5760405163d92e233d60e01b815260040160405180910390fd5b5f80546001600160a01b0319166001600160a01b038316908117825560405190917f77fea3b69c8f9607c0c2d650884633d88223dfddcef42386523604dfb5ba79fa91a250565b6001546001600160a01b0316331461040d576040516330cd747160e01b815260040160405180910390fd5b6001600160a01b0381166104345760405163d92e233d60e01b815260040160405180910390fd5b600180546001600160a01b0319166001600160a01b0392909216919091179055565b5f80546001600160a01b031661046d57505f610630565b7f2ab23539095ae1b8b6609f091b4bef4a98bd08b082a96b63e1fc0bebd1519065840361050b575f54604051637e98cf0760e01b81526001600160a01b0390911690637e98cf07906104c59086908690600401610742565b602060405180830381865afa1580156104e0573d5f803e3d5ffd5b505050506040513d601f19601f820116820180604052508101906105049190610755565b9050610630565b7fffbd7aa64925d862237defc34a9db3b4bfed6dca5af6bd9f71c019cf36f5111e8403610563575f5460405163dbd99e7d60e01b81526001600160a01b039091169063dbd99e7d906104c59086908690600401610742565b7fae1088b9734844de5d5208eba8f7f156fd50e47c2cb0e0e77b3f4b9932c8a41384036105bb575f546040516331d5a20160e11b81526001600160a01b03909116906363ab4402906104c59086908690600401610742565b5f54604051635d71969360e11b81526001600160a01b039091169063bae32d26906105ee90879087908790600401610770565b602060405180830381865afa158015610609573d5f803e3d5ffd5b505050506040513d601f19601f8201168201806040525081019061062d9190610755565b90505b9392505050565b5f805f806060858703121561064a575f80fd5b84359350602085013567ffffffffffffffff80821115610668575f80fd5b818701915087601f83011261067b575f80fd5b813581811115610689575f80fd5b88602082850101111561069a575f80fd5b95986020929092019750949560400135945092505050565b80151581146106bf575f80fd5b50565b5f602082840312156106d2575f80fd5b8135610630816106b2565b5f602082840312156106ed575f80fd5b5035919050565b5f60208284031215610704575f80fd5b81356001600160a01b0381168114610630575f80fd5b81835281816020850137505f828201602090810191909152601f909101601f19169091010190565b602081525f61062d60208301848661071a565b5f60208284031215610765575f80fd5b8151610630816106b2565b838152604060208201525f61078960408301848661071a565b9594505050505056fea2646970667358221220ff6e3c40227fcb62959c5031aff61296503b61fb8c137512a8dc54dbe9d219e964736f6c63430008190033"
+}
