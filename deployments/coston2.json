@@ -21,7 +21,12 @@
   },
   "demo": {
     "fireWithProofTx": "0xa975da7f94beb030dae88c847768bceb78d73e5bd1075ac80b3c97e74614de2f",
-    "fireWithProofExplorer": "https://coston2-explorer.flare.network/tx/0xa975da7f94beb030dae88c847768bceb78d73e5bd1075ac80b3c97e74614de2f"
+    "fireWithProofExplorer": "https://coston2-explorer.flare.network/tx/0xa975da7f94beb030dae88c847768bceb78d73e5bd1075ac80b3c97e74614de2f",
+    "fireWithProofApiTx": "0xf288b45a5029981d9cb41917acc97f4aa23b8e983c987838905cd1ff365b24d2",
+    "fdcRequestAttestationTx": "0xdcc4fb6e9d23b6075c4514c17cdb2407388c7ddb799a81d083a705dea3e5e098",
+    "fdcVotingRound": 1402793,
+    "fdcType": "AddressValidity",
+    "fdcProofReady": true
   },
   "seededTopics": {
     "paymentTopic": 1,

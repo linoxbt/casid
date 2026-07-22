@@ -147,6 +147,17 @@ export default function ContractsPage() {
             </a>
           </li>
           <li>
+            <a
+              href={`${EXPLORER}/tx/0xdcc4fb6e9d23b6075c4514c17cdb2407388c7ddb799a81d083a705dea3e5e098`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "var(--accent)" }}
+            >
+              Live FDC requestAttestation (AddressValidity → FdcHub)
+            </a>{" "}
+            · voting round 1402793 · DA proof ready
+          </li>
+          <li>
             Full deployment map:{" "}
             <code className="mono">deployments/coston2.json</code>
           </li>

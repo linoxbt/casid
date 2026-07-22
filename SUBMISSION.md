@@ -94,6 +94,7 @@ Greenfield for Summer Signal:
 
 **Deployer:** `0x367d3177F6dDe0B759F39Ba1430a4c14E98d2476`  
 **Demo `fireWithProof` tx:** [`0xa975da7f…4614de2f`](https://coston2-explorer.flare.network/tx/0xa975da7f94beb030dae88c847768bceb78d73e5bd1075ac80b3c97e74614de2f)  
+**Live FDC `requestAttestation`:** [`0xdcc4fb6e…a3e5e098`](https://coston2-explorer.flare.network/tx/0xdcc4fb6e9d23b6075c4514c17cdb2407388c7ddb799a81d083a705dea3e5e098) (AddressValidity → FdcHub, voting round **1402793**, **DA proof retrieved**)  
 **Source verification:** ✅ All 6 contracts verified on Coston2 explorer (solc 0.8.25, optimizer 200)
 
 Full map: `deployments/coston2.json`
