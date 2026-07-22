@@ -21,8 +21,14 @@ bash scripts/verify-coston2.sh
 - Deployer key: `/root/.casid/deployer.json` (not in git)
 - `.env` local only
 
+## Live FDC E2E ✅
+- prepareRequest → VALID
+- FdcHub.requestAttestation: [`0xdcc4fb6e…`](https://coston2-explorer.flare.network/tx/0xdcc4fb6e9d23b6075c4514c17cdb2407388c7ddb799a81d083a705dea3e5e098)
+- Voting round 1402793
+- DA Layer proof ready after ~80s
+
 ## Next (optional)
-1. Poll DA for live FDC proof after FdcHub submit
-2. Push GitHub public repo
-3. Vercel deploy of `apps/web`
+1. Push GitHub public repo
+2. Vercel deploy of `apps/web`
+3. Continuous Payment topic watchers for real XRPL txs
 4. Design partner outreach for XRPFi teams

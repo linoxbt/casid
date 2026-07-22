@@ -180,7 +180,7 @@ export function votingRoundId(txTimestampSec: number): number {
 export async function submitAttestationRequest(
   ctx: FlareContext,
   abiEncodedRequest: Hex,
-): Promise<{ txHash: Hex; votingRound: number; fee: string; blockNumber: bigint }> {
+): Promise<{ txHash: Hex; votingRound: number; fee: string; blockNumber: string }> {
   const fdcHub = ctx.addresses.FdcHub;
   if (!fdcHub) throw new Error("FdcHub not resolved");
 
@@ -215,7 +215,7 @@ export async function submitAttestationRequest(
     txHash,
     votingRound: round,
     fee: fee.toString(),
-    blockNumber: receipt.blockNumber,
+    blockNumber: receipt.blockNumber.toString(),
   };
 }
 
