@@ -1,0 +1,157 @@
+const BASE =
+  process.env.NEXT_PUBLIC_COORDINATOR_URL ?? "http://localhost:4100";
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error((err as { error?: string }).error ?? res.statusText);
+  }
+  return res.json() as Promise<T>;
+}
+
+export type Topic = {
+  id: string;
+  onChainId?: number;
+  uri: string;
+  kind: string;
+  active: boolean;
+  createdAt: string;
+  pipeline?: string[];
+};
+
+export type Subscription = {
+  id: string;
+  topicUri: string;
+  topicId?: number;
+  webhookUrl?: string;
+  targetAddress?: string;
+  active: boolean;
+  createdAt: string;
+};
+
+export type CasidEvent = {
+  id: string;
+  topicUri: string;
+  topicId?: number;
+  proofHash: string;
+  eventCommitment: string;
+  attestationType: string;
+  payload: Record<string, unknown>;
+  verified: boolean;
+  mock?: boolean;
+  createdAt: string;
+};
+
+export type Delivery = {
+  id: string;
+  subscriptionId: string;
+  eventId: string;
+  status: string;
+  attempts: number;
+  lastError?: string;
+  deliveredAt?: string;
+  signature?: string;
+};
+
+export const api = {
+  health: () => request<{ ok: boolean; topics: number }>("/health"),
+  meta: () =>
+    request<{
+      name: string;
+      tagline: string;
+      version?: string;
+      network: {
+        chainId: number;
+        rpc: string;
+        name?: string;
+        daLayer?: string;
+        registry?: string;
+      };
+      protocol?: Record<string, string | undefined>;
+      contracts: Record<string, string | null>;
+      primitives: string[];
+      fdc?: { mode: string; steps: string[]; docs: string };
+    }>("/v1/meta"),
+  evaluateComposition: (topicUri: string) =>
+    request<{
+      satisfied: boolean;
+      op: string;
+      children: Array<{ uri: string; kind: string; matched: boolean }>;
+    }>("/v1/composition/evaluate", {
+      method: "POST",
+      body: JSON.stringify({ topicUri }),
+    }),
+  topics: () => request<{ topics: Topic[] }>("/v1/topics"),
+  createTopic: (uri: string) =>
+    request<{ topic: Topic }>("/v1/topics", {
+      method: "POST",
+      body: JSON.stringify({ uri }),
+    }),
+  subscriptions: () =>
+    request<{ subscriptions: Subscription[] }>("/v1/subscriptions"),
+  subscribe: (body: {
+    topicUri: string;
+    webhookUrl?: string;
+    targetAddress?: string;
+  }) =>
+    request<{ subscription: Subscription }>("/v1/subscriptions", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  events: () => request<{ events: CasidEvent[] }>("/v1/events"),
+  deliveries: () => request<{ deliveries: Delivery[] }>("/v1/deliveries"),
+  attestPayment: (body: {
+    topicUri: string;
+    amount?: string;
+    txHash?: string;
+  }) =>
+    request<{
+      event: CasidEvent;
+      mockProof: string;
+      deliveries: Delivery[];
+    }>("/v1/attest/payment", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  attestFtso: (body: { topicUri: string; observedPrice?: number }) =>
+    request<{ event: CasidEvent; deliveries: Delivery[] }>("/v1/attest/ftso", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  runDemo: () =>
+    request<{
+      message: string;
+      event: CasidEvent;
+      deliveries: Delivery[];
+      mockProof: string;
+      composition?: {
+        satisfied: boolean;
+        op: string;
+        children: Array<{ uri: string; kind: string; matched: boolean }>;
+      };
+      onChain?: { ok: boolean; mode?: string; txHash?: string };
+      fdc?: { mode: string; status: string; notes: string[] };
+    }>("/v1/demo/run", { method: "POST", body: "{}" }),
+  liveFdcAddressValidity: (address?: string) =>
+    request<{
+      message?: string;
+      prepare?: { status: string; abiEncodedRequest: string };
+      steps?: string[];
+      error?: string;
+      casidEvent?: CasidEvent;
+    }>("/v1/fdc/live/address-validity", {
+      method: "POST",
+      body: JSON.stringify({
+        address: address ?? "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+        submit: false,
+      }),
+    }),
+};

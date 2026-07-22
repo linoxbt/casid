@@ -1,0 +1,87 @@
+{
+  "contractName": "MockFdcVerification",
+  "abi": [
+    {
+      "type": "function",
+      "name": "verifyAttestation",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "_proof",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "verifyEVMTransaction",
+      "inputs": [
+        {
+          "name": "_proof",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "verifyPayment",
+      "inputs": [
+        {
+          "name": "_proof",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "verifyWeb2Json",
+      "inputs": [
+        {
+          "name": "_proof",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "pure"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f80fd5b5061018f8061001c5f395ff3fe608060405234801561000f575f80fd5b506004361061004a575f3560e01c806363ab44021461004e5780637e98cf071461004e578063bae32d2614610077578063dbd99e7d1461004e575b5f80fd5b61006361005c3660046100d2565b1515919050565b604051901515815260200160405180910390f35b610063610085366004610111565b151592915050565b5f8083601f84011261009d575f80fd5b50813567ffffffffffffffff8111156100b4575f80fd5b6020830191508360208285010111156100cb575f80fd5b9250929050565b5f80602083850312156100e3575f80fd5b823567ffffffffffffffff8111156100f9575f80fd5b6101058582860161008d565b90969095509350505050565b5f805f60408486031215610123575f80fd5b83359250602084013567ffffffffffffffff811115610140575f80fd5b61014c8682870161008d565b949790965093945050505056fea2646970667358221220c4a46bdc8b99461682fdfc1eef82fd819169c97fcebbdf852c1e9f1ce21ae79264736f6c63430008190033"
+}

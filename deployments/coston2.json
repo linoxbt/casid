@@ -1,0 +1,45 @@
+{
+  "network": "coston2",
+  "chainId": 114,
+  "rpc": "https://coston2-api.flare.network/ext/C/rpc",
+  "deployer": "0x367d3177F6dDe0B759F39Ba1430a4c14E98d2476",
+  "deployedAt": "2026-07-22T00:38:19.999405Z",
+  "contracts": {
+    "MockFdcVerification": "0xc9442a9542e4A931bc2bA207b31B98EA57C4a53B",
+    "MockFtsoV2": "0xFBAD05CFcF1329fBCe5B9d95e618Ebe5A6d23853",
+    "TopicRegistry": "0xe132a226382E3A872d558c8c576f0aaeF864bE7C",
+    "ProofVerifier": "0x787c170ad57D650D2BeE947A25c22F677B22bd87",
+    "SubscriptionHub": "0xAd5dD33d2F753891A18A970361C81a87c401f31d",
+    "TriggerExecutor": "0x29e1f57044ce6C22Db362222e4a66da78F5acd3e"
+  },
+  "explorer": "https://coston2-explorer.flare.network",
+  "links": {
+    "TopicRegistry": "https://coston2-explorer.flare.network/address/0xe132a226382E3A872d558c8c576f0aaeF864bE7C",
+    "ProofVerifier": "https://coston2-explorer.flare.network/address/0x787c170ad57D650D2BeE947A25c22F677B22bd87",
+    "SubscriptionHub": "https://coston2-explorer.flare.network/address/0xAd5dD33d2F753891A18A970361C81a87c401f31d",
+    "TriggerExecutor": "https://coston2-explorer.flare.network/address/0x29e1f57044ce6C22Db362222e4a66da78F5acd3e"
+  },
+  "demo": {
+    "fireWithProofTx": "0xa975da7f94beb030dae88c847768bceb78d73e5bd1075ac80b3c97e74614de2f",
+    "fireWithProofExplorer": "https://coston2-explorer.flare.network/tx/0xa975da7f94beb030dae88c847768bceb78d73e5bd1075ac80b3c97e74614de2f"
+  },
+  "seededTopics": {
+    "paymentTopic": 1,
+    "ftsoTopic": 2
+  },
+  "verified": true,
+  "verification": {
+    "compiler": "0.8.25",
+    "optimizerRuns": 200,
+    "verifier": "blockscout",
+    "status": "Pass - Verified",
+    "contracts": [
+      "MockFdcVerification",
+      "MockFtsoV2",
+      "TopicRegistry",
+      "ProofVerifier",
+      "SubscriptionHub",
+      "TriggerExecutor"
+    ]
+  }
+}

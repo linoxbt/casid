@@ -1,0 +1,29 @@
+{
+  "name": "casid",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Casid — Verified Economic Event Fabric for Flare",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter @casid/web dev",
+    "dev:web": "bun run --filter @casid/web dev",
+    "dev:coordinator": "bun run --filter @casid/coordinator dev",
+    "dev:all": "bun run --filter @casid/coordinator dev & bun run --filter @casid/web dev",
+    "build": "bun run --filter @casid/core build && bun run --filter @casid/web build && bun run --filter @casid/coordinator build",
+    "build:core": "bun run --filter @casid/core build",
+    "export:abis": "cd contracts && forge build && bun ../scripts/export-abis.mjs",
+    "deploy:local": "cd contracts && forge script script/DeployLocal.s.sol --fork-url http://127.0.0.1:8545 --broadcast -vvv",
+    "deploy:coston2": "bash scripts/deploy-coston2.sh",
+    "demo": "bash scripts/demo.sh",
+    "test": "bun run --filter @casid/core test && cd contracts && forge test",
+    "test:contracts": "cd contracts && forge test",
+    "lint": "bun run --filter @casid/web lint"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

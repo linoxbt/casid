@@ -1,0 +1,28 @@
+# Optional local stack — not required for MVP (in-memory coordinator is enough)
+services:
+  coordinator:
+    image: oven/bun:1.2
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: bun run --filter @casid/coordinator start
+    environment:
+      COORDINATOR_PORT: 4100
+      WEBHOOK_SIGNING_SECRET: dev-change-me-casid-hmac
+      FLARE_RPC_URL: https://coston2-api.flare.network/ext/C/rpc
+      FLARE_CHAIN_ID: "114"
+    ports:
+      - "4100:4100"
+
+  web:
+    image: oven/bun:1.2
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: bun run --filter @casid/web dev
+    environment:
+      NEXT_PUBLIC_COORDINATOR_URL: http://localhost:4100
+    ports:
+      - "3100:3100"
+    depends_on:
+      - coordinator

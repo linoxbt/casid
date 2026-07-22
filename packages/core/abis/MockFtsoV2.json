@@ -1,0 +1,115 @@
+{
+  "contractName": "MockFtsoV2",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getFeedById",
+      "inputs": [
+        {
+          "name": "_feedId",
+          "type": "bytes21",
+          "internalType": "bytes21"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "decimals",
+          "type": "int8",
+          "internalType": "int8"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getFeedByIdInWei",
+      "inputs": [
+        {
+          "name": "_feedId",
+          "type": "bytes21",
+          "internalType": "bytes21"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pricesWei",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes21",
+          "internalType": "bytes21"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setPriceWei",
+      "inputs": [
+        {
+          "name": "feedId",
+          "type": "bytes21",
+          "internalType": "bytes21"
+        },
+        {
+          "name": "priceWei",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "timestamps",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes21",
+          "internalType": "bytes21"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f80fd5b506102ce8061001c5f395ff3fe608060405234801561000f575f80fd5b5060043610610055575f3560e01c806359feadf614610059578063709488ee146100bd57806393e9f8061461010e5780639499693e14610148578063d78cc8be1461018a575b5f80fd5b61009a610067366004610231565b6001600160581b0319165f9081526020818152604080832054600190925290912054909167ffffffffffffffff90911690565b6040805192835267ffffffffffffffff9091166020830152015b60405180910390f35b61010c6100cb366004610251565b6001600160581b0319919091165f90815260208181526040808320939093556001905220805467ffffffffffffffff19164267ffffffffffffffff16179055565b005b61012161011c366004610231565b6101b7565b604080519384525f9290920b602084015267ffffffffffffffff16908201526060016100b4565b610171610156366004610231565b60016020525f908152604090205467ffffffffffffffff1681565b60405167ffffffffffffffff90911681526020016100b4565b6101a9610198366004610231565b5f6020819052908152604090205481565b6040519081526020016100b4565b6001600160581b031981165f90815260208190526040812054819081906101e4906402540be40090610279565b6001600160581b0319949094165f90815260016020526040902054939460089467ffffffffffffffff169350915050565b80356001600160581b03198116811461022c575f80fd5b919050565b5f60208284031215610241575f80fd5b61024a82610215565b9392505050565b5f8060408385031215610262575f80fd5b61026b83610215565b946020939093013593505050565b5f8261029357634e487b7160e01b5f52601260045260245ffd5b50049056fea2646970667358221220a1be144b1013a758d29698c5847e22254fad0999762485520467e6232d9d237464736f6c63430008190033"
+}
