@@ -28,6 +28,8 @@ const CHAIN_ALIASES: Record<string, ChainId> = {
 };
 
 const OPS: CompareOp[] = ["gt", "gte", "lt", "lte", "eq"];
+const FASSET_ACTIONS = ["mint", "redeem"] as const;
+const FASSETS = ["FXRP", "FBTC", "FDOGE"] as const;
 
 export function normalizeChain(raw: string): ChainId {
   const key = raw.toLowerCase();
@@ -125,13 +127,36 @@ export function parseTopicUri(uri: string): ParsedTopic {
   if (head === "fasset") {
     if (parts.length < 3) throw new Error("fasset topic needs action and asset");
     const action = parts[1]!.toLowerCase() as "mint" | "redeem";
+    if (!(FASSET_ACTIONS as readonly string[]).includes(action)) {
+      throw new Error("fasset action must be mint|redeem");
+    }
     const asset = parts[2]!.toUpperCase() as "FXRP" | "FBTC" | "FDOGE";
+    if (!(FASSETS as readonly string[]).includes(asset)) {
+      throw new Error("fasset asset must be FXRP|FBTC|FDOGE");
+    }
     const spec: TopicSpec = { kind: "FASSET_LIFECYCLE", asset, action };
     return {
       uri,
       kind: "FASSET_LIFECYCLE",
       spec,
       schemaHashInput: JSON.stringify({ kind: "FASSET_LIFECYCLE", asset, action }),
+    };
+  }
+
+  if (head === "evm") {
+    if (parts.length < 2) throw new Error("evm topic needs chain");
+    const chain = normalizeChain(parts[1]!);
+    if (chain !== "FLR" && chain !== "ETH" && chain !== "SGB") {
+      throw new Error("evm chain must be FLR|ETH|SGB");
+    }
+    const to = parts[2] === "*" ? undefined : parts[2];
+    const selector = parts[3];
+    const spec: TopicSpec = { kind: "EVM_TRANSACTION", chain, to, selector };
+    return {
+      uri,
+      kind: "EVM_TRANSACTION",
+      spec,
+      schemaHashInput: JSON.stringify(spec),
     };
   }
 

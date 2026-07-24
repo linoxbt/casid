@@ -18,11 +18,12 @@ export async function deliverToSubscribers(
   signingSecret: string,
 ): Promise<WebhookDelivery[]> {
   const subs = activeSubsForTopic(store, event.topicUri);
+  const concurrency = Math.max(1, Number(process.env.WEBHOOK_CONCURRENCY ?? 5));
   const results: WebhookDelivery[] = [];
 
-  for (const sub of subs) {
-    const delivery = await deliverOne(store, sub, event, signingSecret);
-    results.push(delivery);
+  for (let i = 0; i < subs.length; i += concurrency) {
+    const chunk = subs.slice(i, i + concurrency);
+    results.push(...(await Promise.all(chunk.map((sub) => deliverOne(store, sub, event, signingSecret)))));
   }
 
   return results;
@@ -44,7 +45,6 @@ async function deliverOne(
     eventCommitment: event.eventCommitment,
     attestationType: event.attestationType,
     payload: event.payload,
-    mock: event.mock ?? false,
     createdAt: event.createdAt,
   };
   const body = JSON.stringify(bodyObj);
@@ -68,49 +68,46 @@ async function deliverOne(
     return getDelivery(store, id)!;
   }
 
-  if (sub.webhookUrl.startsWith("casid://log")) {
-    console.log("[casid webhook]", body);
-    updateDeliveryStatus(store, id, "delivered", {
-      attempts: 1,
-      deliveredAt: new Date().toISOString(),
-      signature,
-    });
-    return getDelivery(store, id)!;
-  }
+  const maxAttempts = Math.max(1, Number(process.env.WEBHOOK_MAX_ATTEMPTS ?? 3));
+  let lastError = "unknown delivery error";
 
-  try {
-    const res = await fetch(sub.webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Casid-Signature": signature,
-        "X-Casid-Event-Id": event.id,
-        "User-Agent": "Casid-Coordinator/0.1",
-      },
-      body,
-      signal: AbortSignal.timeout(10_000),
-    });
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(sub.webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Casid-Signature": signature,
+          "X-Casid-Event-Id": event.id,
+          "User-Agent": "Casid-Coordinator/0.2",
+        },
+        body,
+        signal: AbortSignal.timeout(10_000),
+      });
 
-    if (!res.ok) {
-      updateDeliveryStatus(store, id, "failed", {
-        attempts: 1,
-        lastError: `HTTP ${res.status}`,
-        signature,
-      });
-    } else {
-      updateDeliveryStatus(store, id, "delivered", {
-        attempts: 1,
-        deliveredAt: new Date().toISOString(),
-        signature,
-      });
+      if (res.ok) {
+        updateDeliveryStatus(store, id, "delivered", {
+          attempts: attempt,
+          deliveredAt: new Date().toISOString(),
+          signature,
+        });
+        return getDelivery(store, id)!;
+      }
+      lastError = `HTTP ${res.status}`;
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
     }
-  } catch (err) {
-    updateDeliveryStatus(store, id, "failed", {
-      attempts: 1,
-      lastError: err instanceof Error ? err.message : String(err),
-      signature,
-    });
+
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+    }
   }
+
+  updateDeliveryStatus(store, id, "failed", {
+    attempts: maxAttempts,
+    lastError,
+    signature,
+  });
 
   return getDelivery(store, id)!;
 }

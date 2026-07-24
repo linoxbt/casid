@@ -82,7 +82,6 @@ bun run dev:web
 
 - Console: http://localhost:3100  
 - API: http://localhost:4100/health  
-- Demo: `POST http://localhost:4100/v1/demo/run`  
 - Meta (live Flare registry): `GET http://localhost:4100/v1/meta`
 
 Copy `.env.example` → `.env` as needed. For on-chain fire after local deploy:
@@ -120,11 +119,10 @@ Example composition (product vision):
 | GET | `/v1/meta` | Network + contract addresses |
 | GET/POST | `/v1/topics` | List / register topics |
 | GET/POST | `/v1/subscriptions` | Webhook subscriptions |
-| POST | `/v1/attest/payment` | FDC payment path (mock/live scaffold) + fan-out + optional on-chain fire |
-| POST | `/v1/attest/ftso` | FTSO threshold cross (`useLiveFeed` optional) |
+| POST | `/v1/attest/payment` | Live FDC Payment request + DA proof + fan-out + optional on-chain fire |
+| POST | `/v1/attest/ftso` | Live FTSO threshold cross |
 | POST | `/v1/composition/evaluate` | AND/OR composition against recent events |
 | GET | `/v1/ftso/:feed` | Live FTSO read via Flare registry |
-| POST | `/v1/demo/run` | One-click E2E demo (XRP payment) |
 | GET | `/v1/events` | Verified events (SQLite) |
 | GET | `/v1/deliveries` | Webhook delivery log |
 
@@ -143,7 +141,7 @@ Payload body is signed as `{t}.{body}` (Stripe-style).
 | Contract | Responsibility |
 |----------|----------------|
 | `TopicRegistry` | Topic IDs, schema hashes, AND/OR compositions |
-| `ProofVerifier` | FDC verify + `usedProof` anti-replay; mock mode for demos |
+| `ProofVerifier` | FDC verify + `usedProof` anti-replay |
 | `SubscriptionHub` | Subscribers, webhook commits, credits |
 | `TriggerExecutor` | `fireWithProof` / `fireFtsoThreshold` → `TriggerFired` + optional call |
 
@@ -151,12 +149,11 @@ All covered by `forge test` (7 tests).
 
 ---
 
-## Security (MVP)
+## Security
 
 - Proof hashes are single-use on-chain  
 - Webhook HMAC + timestamp tolerance  
 - Topic schemas hashed on registration  
-- Mock FDC clearly labeled — production swaps `ProofVerifier` to live `FdcVerification`  
 - No private keys in the web app  
 
 ---
@@ -165,7 +162,7 @@ All covered by `forge test` (7 tests).
 
 | Horizon | Milestone |
 |---------|-----------|
-| Hackathon | Topic DSL, mock→live FDC path, dashboard, Coston2 deploy |
+| Current | Topic DSL, live FDC request flow, dashboard, Coston2 deploy |
 | 6 months | Live FDC rounds, Postgres, enterprise webhooks, design partners |
 | 1 year | Mainnet, FAssets lifecycle topics, paid SLAs |
 | 3 years | Decentralized coordinators, Attested Topic standard |
@@ -193,8 +190,8 @@ curl -X POST http://localhost:4100/v1/fdc/live/address-validity \
 # 1) Fund deployer (see deployments/coston2.pending.json)
 # 2) Deploy Casid contracts
 bun run deploy:coston2
-# 3) Judge walkthrough
-bun run demo
+# 3) Start the web app and submit a real FDC Payment transaction id
+bun run dev:web
 ```
 
 ## Hackathon submission notes
@@ -203,7 +200,7 @@ See **[SUBMISSION.md](./SUBMISSION.md)** for DoraHacks fields.
 
 - **Track:** Interoperable Asset Products (primary)  
 - **What is new:** Attested Topics + proof-gated delivery fabric on Flare  
-- **Demo path:** Console → Run end-to-end demo → Live FDC prepare → Architecture  
+- **Operator path:** Landing → Launch app → Submit FDC Payment tx → Verify FTSO threshold → Docs  
 - **Existing work:** Greenfield for Summer Signal  
 
 ---

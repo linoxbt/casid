@@ -25,16 +25,9 @@ contract DeployLocalScript is Script {
         SubscriptionHub hub = new SubscriptionHub(address(registry));
         TriggerExecutor executor =
             new TriggerExecutor(address(verifier), address(registry), address(hub), address(mockFtso));
+        verifier.setConsumer(address(executor));
 
-        bytes32 paySchema = TopicLib.paymentSchemaHash(
-            keccak256("XRPL"), keccak256(bytes("rCasidDemoDestination000000000001"))
-        );
-        uint256 paymentTopic = registry.createTopic(
-            TopicLib.KIND_PAYMENT,
-            paySchema,
-            "topic://payment/xrp/rCasidDemoDestination000000000001"
-        );
-
+        // Local deployment mirrors production seeding: no fake payment destinations.
         bytes21 feedId = bytes21(bytes("XRP/USD"));
         bytes32 ftsoSchema =
             TopicLib.ftsoThresholdSchemaHash(feedId, TopicLib.CompareOp.Gte, 5e17);
@@ -44,15 +37,6 @@ contract DeployLocalScript is Script {
             "topic://ftso/price/XRP-USD/threshold/gte/0.50"
         );
 
-        uint256[] memory children = new uint256[](2);
-        children[0] = paymentTopic;
-        children[1] = ftsoTopic;
-        registry.createComposition(
-            TopicLib.CompositionOp.And,
-            children,
-            "topic://composition/and/xrp-payment+xrp-price-gte-0.50"
-        );
-
         console2.log("=== CASID DEPLOYMENT ===");
         console2.log("MockFdcVerification=", address(mockFdc));
         console2.log("MockFtsoV2=", address(mockFtso));
@@ -60,7 +44,6 @@ contract DeployLocalScript is Script {
         console2.log("PROOF_VERIFIER_ADDRESS=", address(verifier));
         console2.log("SUBSCRIPTION_HUB_ADDRESS=", address(hub));
         console2.log("TRIGGER_EXECUTOR_ADDRESS=", address(executor));
-        console2.log("paymentTopic=", paymentTopic);
         console2.log("ftsoTopic=", ftsoTopic);
 
         vm.stopBroadcast();

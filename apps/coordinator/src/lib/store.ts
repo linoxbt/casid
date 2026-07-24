@@ -6,6 +6,7 @@ import type {
 } from "@casid/core";
 import { parseTopicUri, type ParsedTopic } from "@casid/core";
 import { openDb, type Db } from "./db";
+import { validateWebhookUrl } from "../services/security";
 
 export interface TopicRecord {
   id: string;
@@ -89,19 +90,17 @@ function rowToTopic(row: {
   };
 }
 
-export function seedDemoTopics(store: Store): void {
+export function seedStarterTopics(store: Store): void {
   const count = store.topics.size;
   if (count > 0) return;
 
-  const demos = [
-    "topic://payment/xrp/rCasidDemoDestination000000000001",
+  const starterTopics = [
     "topic://ftso/price/XRP-USD/threshold/gte/0.50",
-    "topic://payment/btc/bc1qcasiddemobtc000000000000000001",
     "topic://fasset/mint/FXRP",
   ];
 
-  let n = 1;
-  for (const uri of demos) {
+  let onChainId = 1;
+  for (const uri of starterTopics) {
     try {
       const parsed = parseTopicUri(uri);
       insertTopic(store, {
@@ -111,29 +110,11 @@ export function seedDemoTopics(store: Store): void {
         parsed,
         createdAt: new Date().toISOString(),
         active: true,
-        onChainId: n++,
+        onChainId: onChainId++,
       });
     } catch {
       /* skip */
     }
-  }
-
-  const children = listTopics(store).filter((t) =>
-    ["PAYMENT", "FTSO_THRESHOLD"].includes(t.kind),
-  );
-  if (children.length >= 2) {
-    const xrp = children.find((c) => c.uri.includes("/xrp/")) ?? children[0]!;
-    const ftso = children.find((c) => c.kind === "FTSO_THRESHOLD") ?? children[1]!;
-    const uri = `topic://composition/and/${xrp.uri.replace("topic://", "")}+${ftso.uri.replace("topic://", "")}`;
-    insertTopic(store, {
-      id: crypto.randomUUID(),
-      uri,
-      kind: "COMPOSITION",
-      parsed: parseTopicUri("topic://composition/and/demo"),
-      createdAt: new Date().toISOString(),
-      active: true,
-      onChainId: n++,
-    });
   }
 }
 
@@ -249,15 +230,16 @@ export function createSubscription(
 ): Subscription {
   const topic = findTopicByUri(store, input.topicUri);
   if (!topic) throw new Error(`Unknown topic: ${input.topicUri}`);
+  const webhookUrl = validateWebhookUrl(input.webhookUrl);
 
   // Idempotent: same topic + webhook
-  if (input.webhookUrl) {
+  if (webhookUrl) {
     const existing = store.db
       .query(
         `SELECT id, topic_uri, topic_id, webhook_url, target_address, active, created_at, credit
          FROM subscriptions WHERE topic_uri = ? AND webhook_url = ? AND active = 1 LIMIT 1`,
       )
-      .get(input.topicUri, input.webhookUrl) as
+      .get(input.topicUri, webhookUrl) as
       | {
           id: string;
           topic_uri: string;
@@ -287,7 +269,7 @@ export function createSubscription(
     id: crypto.randomUUID(),
     topicUri: input.topicUri,
     topicId: topic.onChainId,
-    webhookUrl: input.webhookUrl,
+    webhookUrl,
     targetAddress: input.targetAddress,
     active: true,
     createdAt: new Date().toISOString(),
@@ -361,7 +343,7 @@ export function recordEvent(store: Store, event: AttestedEvent): AttestedEvent {
       event.attestationType,
       JSON.stringify(event.payload),
       event.verified ? 1 : 0,
-      event.mock ? 1 : 0,
+      0,
       event.createdAt,
     );
   return event;
@@ -395,7 +377,6 @@ export function listEvents(store: Store, limit = 100): AttestedEvent[] {
     attestationType: r.attestation_type as AttestedEvent["attestationType"],
     payload: JSON.parse(r.payload_json) as Record<string, unknown>,
     verified: r.verified === 1,
-    mock: r.mock === 1,
     createdAt: r.created_at,
   }));
 }

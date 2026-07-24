@@ -118,7 +118,7 @@ contract TriggerExecutor {
 
         // Consume via mock-compatible path: encode value as "proof"
         bytes memory proof = abi.encode(value, block.timestamp);
-        proofVerifier.verifyAndConsume(TopicLib.KIND_FTSO_THRESHOLD, proof, proofHash);
+        proofVerifier.consumeFtsoProof(proof, proofHash);
 
         address target = address(0);
         if (subId != 0) {

@@ -250,7 +250,7 @@ export async function fetchProofByRound(
 }
 
 /**
- * Full live path for AddressValidity (best demo without needing a real payment tx):
+ * Full live path for AddressValidity:
  * prepare → (optional) submit to FdcHub → wait → DA proof
  */
 export async function liveAddressValidityFlow(
@@ -294,6 +294,54 @@ export async function liveAddressValidityFlow(
     steps.push(
       `DA poll ${i + 1}/${maxAttempts}: ${proof.error ?? "not ready"}`,
     );
+  }
+
+  return { prepare, submit, proof, steps };
+}
+
+export async function livePaymentFlow(
+  ctx: FlareContext,
+  opts: {
+    chain: "xrp" | "btc" | "doge";
+    transactionId: string;
+    inUtxo?: number;
+    submit?: boolean;
+    waitRounds?: number;
+  },
+): Promise<{
+  prepare: PrepareResult;
+  submit?: Awaited<ReturnType<typeof submitAttestationRequest>>;
+  proof?: DaProofResponse;
+  steps: string[];
+}> {
+  const steps: string[] = [];
+  const prepare = await preparePayment(opts);
+  steps.push(`prepareRequest status=${prepare.status}`);
+
+  if (prepare.status !== "VALID") {
+    return { prepare, steps: [...steps, "prepare not VALID — abort"] };
+  }
+
+  if (!opts.submit) {
+    steps.push("submit skipped (pass submit:true + DEPLOYER_PRIVATE_KEY)");
+    return { prepare, steps };
+  }
+
+  const submit = await submitAttestationRequest(ctx, prepare.abiEncodedRequest);
+  steps.push(
+    `requestAttestation tx=${submit.txHash} round=${submit.votingRound} fee=${submit.fee}`,
+  );
+
+  const maxAttempts = opts.waitRounds ?? 8;
+  let proof: DaProofResponse | undefined;
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((r) => setTimeout(r, 20_000));
+    proof = await fetchProofByRound(submit.votingRound, prepare.abiEncodedRequest);
+    if (proof.response && proof.proof?.length) {
+      steps.push(`DA proof ready after attempt ${i + 1}`);
+      break;
+    }
+    steps.push(`DA poll ${i + 1}/${maxAttempts}: ${proof.error ?? "not ready"}`);
   }
 
   return { prepare, submit, proof, steps };

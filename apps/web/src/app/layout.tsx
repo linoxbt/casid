@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,20 +19,27 @@ export default function RootLayout({
       <body>
         <div className="shell">
           <header className="topbar">
-            <a href="/" className="brand">
-              <span className="brand-mark" />
+            <Link href="/" className="brand">
+              <Image src="/brand/casid-mark.svg" alt="" width={42} height={42} className="brand-mark" />
               <span>
                 Casid
                 <small>Verified Economic Event Fabric</small>
               </span>
-            </a>
-            <nav className="nav">
-              <a href="/">Console</a>
-              <a href="/topics">Topics</a>
-              <a href="/events">Events</a>
-              <a href="/contracts">Contracts</a>
-              <a href="/docs">Architecture</a>
-            </nav>
+            </Link>
+            <details className="hamburger-menu">
+              <summary aria-label="Open navigation">
+                <span />
+                <span />
+                <span />
+              </summary>
+              <nav className="drawer-nav" aria-label="Main navigation">
+                <Link href="/">Home</Link>
+                <Link href="/app">Launch app</Link>
+                <Link href="/app/topics">Topics</Link>
+                <Link href="/app/events">Events</Link>
+                <Link href="/app/docs">Docs</Link>
+              </nav>
+            </details>
           </header>
           <main className="main">{children}</main>
           <footer className="footer">

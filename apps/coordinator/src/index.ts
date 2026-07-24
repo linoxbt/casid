@@ -12,41 +12,47 @@ import {
   listEvents,
   listSubscriptions,
   listTopics,
-  seedDemoTopics,
+  seedStarterTopics,
   type Store,
 } from "./lib/store";
 import {
   describeAttestationPipeline,
-  encodeMockProof,
-  simulateFtsoCrossing,
-  simulatePaymentAttestation,
+  encodeProofPayload,
+  recordFtsoEvent,
+  recordPaymentEvent,
 } from "./services/attestation";
 import { deliverToSubscribers } from "./services/delivery";
-import { fireEventOnChain } from "./services/chain";
-import { evaluateComposition } from "./services/composition";
 import {
-  describeFdcIntegration,
-  fetchDaProof,
-  fdcMode,
-  requestPaymentAttestation,
-} from "./services/fdc";
+  fireEventOnChain,
+  registerSubscriptionOnChain,
+  registerTopicOnChain,
+} from "./services/chain";
+import { evaluateComposition } from "./services/composition";
 import {
   fetchProofByRound,
   liveAddressValidityFlow,
+  livePaymentFlow,
   prepareAddressValidity,
   preparePayment,
   votingRoundId,
 } from "./services/fdcLive";
 import { readFtsoPriceWei, resolveFlareContext, type FlareContext } from "./services/flare";
+import {
+  hasValidApiKey,
+  originAllowed,
+  requireConfiguredSecrets,
+} from "./services/security";
 
 const PORT = Number(process.env.COORDINATOR_PORT ?? 4100);
 const SIGNING_SECRET =
   process.env.WEBHOOK_SIGNING_SECRET ?? "dev-change-me-casid-hmac";
 
+requireConfiguredSecrets();
+
 const store: Store = createStore(
   process.env.DATABASE_PATH ?? "./data/casid.db",
 );
-seedDemoTopics(store);
+seedStarterTopics(store);
 
 let flareCtx: FlareContext | null = null;
 
@@ -68,18 +74,26 @@ const app = new Hono();
 app.use(
   "*",
   cors({
-    origin: "*",
+    origin: (origin) => originAllowed(origin) ?? "",
     allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
+app.use("/v1/*", async (c, next) => {
+  if (["GET", "OPTIONS"].includes(c.req.method)) return next();
+  if (!hasValidApiKey(c.req.header("Authorization"))) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  return next();
+});
 
 app.get("/health", (c) =>
   c.json({
     ok: true,
     service: "casid-coordinator",
     version: "0.2.0",
-    fdcMode: fdcMode(),
+    fdcMode: "live",
     topics: store.topics.size,
     subscriptions: store.subscriptions.size,
     events: store.events.size,
@@ -94,7 +108,17 @@ app.get("/v1/meta", async (c) => {
     name: "Casid",
     tagline: "Verified Economic Event Fabric for Flare",
     version: "0.2.0",
-    fdc: describeFdcIntegration(),
+    fdc: {
+      mode: "live",
+      steps: [
+        "Prepare FDC request with verifier server",
+        "Submit abiEncodedRequest to FdcHub with request fee",
+        "Wait for voting round finalization",
+        "Fetch Merkle proof from DA Layer",
+        "Record verified event and deliver signed webhooks",
+      ],
+      docs: "https://dev.flare.network/fdc/overview",
+    },
     network: {
       name: flare.network,
       chainId: flare.chainId,
@@ -156,7 +180,13 @@ app.post("/v1/topics", async (c) => {
     kind: parsed.kind,
     parsed,
   });
-  return c.json({ topic: record, existed: false }, 201);
+  const flare = await getFlare();
+  const onChain = await registerTopicOnChain(flare, {
+    kind: record.kind,
+    schemaHashInput: record.parsed.schemaHashInput,
+    uri: record.uri,
+  });
+  return c.json({ topic: record, existed: false, onChain }, 201);
 });
 
 app.get("/v1/topics/:id", (c) => {
@@ -183,7 +213,13 @@ app.post("/v1/subscriptions", async (c) => {
   if (!body.topicUri) return c.json({ error: "topicUri required" }, 400);
   try {
     const sub = createSubscription(store, body);
-    return c.json({ subscription: sub }, 201);
+    const flare = await getFlare();
+    const onChain = await registerSubscriptionOnChain(flare, {
+      topicId: sub.topicId,
+      webhookUrl: sub.webhookUrl,
+      targetAddress: sub.targetAddress,
+    });
+    return c.json({ subscription: sub, onChain }, 201);
   } catch (e) {
     return c.json({ error: e instanceof Error ? e.message : String(e) }, 400);
   }
@@ -202,7 +238,12 @@ app.get("/v1/events", (c) => {
 });
 
 app.get("/v1/deliveries", (c) => {
-  return c.json({ deliveries: listDeliveries(store) });
+  return c.json({
+    deliveries: listDeliveries(store).map((d) => ({
+      ...d,
+      signature: d.signature ? `${d.signature.slice(0, 24)}...` : undefined,
+    })),
+  });
 });
 
 // --- Attestations ---
@@ -212,26 +253,48 @@ app.post("/v1/attest/payment", async (c) => {
     topicUri: string;
     txHash?: string;
     amount?: string;
-    source?: string;
-    destination?: string;
     deliver?: boolean;
     fireOnChain?: boolean;
+    waitRounds?: number;
   }>();
   if (!body.topicUri) return c.json({ error: "topicUri required" }, 400);
 
   try {
     const flare = await getFlare();
-    const fdcReceipt = await requestPaymentAttestation(flare, {
-      chain: body.topicUri.includes("/btc/")
-        ? "BTC"
-        : body.topicUri.includes("/doge/")
-          ? "DOGE"
-          : "XRPL",
-      txId: body.txHash ?? `demo-tx-${Date.now()}`,
-    });
+    const chain = body.topicUri.includes("/btc/")
+      ? "BTC"
+      : body.topicUri.includes("/doge/")
+        ? "DOGE"
+        : "XRPL";
 
-    const event = await simulatePaymentAttestation(store, body);
-    const da = await fetchDaProof(flare, { mockPayload: event.payload });
+    if (!body.txHash) {
+      return c.json({ error: "txHash required for FDC Payment attestation" }, 400);
+    }
+
+    const live = await livePaymentFlow(flare, {
+      chain: chain === "BTC" ? "btc" : chain === "DOGE" ? "doge" : "xrp",
+      transactionId: body.txHash,
+      submit: true,
+      waitRounds: body.waitRounds,
+    });
+    const proofFound = Boolean(live.proof?.response && live.proof.proof?.length);
+    if (!proofFound) {
+      return c.json(
+        {
+          status: "pending_proof",
+          error: "FDC Payment proof not finalized",
+          fdc: live,
+        },
+        202,
+      );
+    }
+
+    const event = await recordPaymentEvent(store, {
+      topicUri: body.topicUri,
+      txHash: body.txHash,
+      amount: body.amount,
+      proofResponse: live.proof?.response ?? {},
+    });
 
     let deliveries = [];
     if (body.deliver !== false) {
@@ -241,7 +304,7 @@ app.post("/v1/attest/payment", async (c) => {
     let onChain = null;
     if (body.fireOnChain) {
       onChain = await fireEventOnChain(flare, event, {
-        proofHex: (da.proof as `0x${string}`) ?? encodeMockProof(event),
+        proofHex: (`0x${Buffer.from(JSON.stringify(live.proof)).toString("hex")}`) as `0x${string}`,
       });
     } else {
       onChain = await fireEventOnChain(flare, event);
@@ -249,9 +312,7 @@ app.post("/v1/attest/payment", async (c) => {
 
     return c.json({
       event,
-      fdc: fdcReceipt,
-      da,
-      mockProof: encodeMockProof(event),
+      fdc: live,
       deliveries,
       onChain,
     });
@@ -263,33 +324,30 @@ app.post("/v1/attest/payment", async (c) => {
 app.post("/v1/attest/ftso", async (c) => {
   const body = await c.req.json<{
     topicUri: string;
-    observedPrice?: number;
     deliver?: boolean;
-    useLiveFeed?: boolean;
+    fireOnChain?: boolean;
   }>();
   if (!body.topicUri) return c.json({ error: "topicUri required" }, 400);
 
   try {
-    let observed = body.observedPrice;
-
-    if (body.useLiveFeed) {
-      const flare = await getFlare();
-      const parsed = parseTopicUri(body.topicUri);
-      if (parsed.spec.kind === "FTSO_THRESHOLD") {
-        const live = await readFtsoPriceWei(flare, parsed.spec.feed);
-        if (live) {
-          // wei units where 1e18 ≈ $1
-          observed = Number(live.value) / 1e18;
-        }
-      }
+    const flare = await getFlare();
+    const parsed = parseTopicUri(body.topicUri);
+    if (parsed.spec.kind !== "FTSO_THRESHOLD") {
+      return c.json({ error: "Topic is not FTSO_THRESHOLD" }, 400);
     }
+    const live = await readFtsoPriceWei(flare, parsed.spec.feed);
+    if (!live) {
+      return c.json({ error: "Live FTSO feed unavailable" }, 503);
+    }
+    const observed = Number(live.value) / 1e18;
 
-    const event = await simulateFtsoCrossing(store, body.topicUri, observed);
+    const event = await recordFtsoEvent(store, body.topicUri, observed);
     let deliveries = [];
     if (body.deliver !== false) {
       deliveries = await deliverToSubscribers(store, event, SIGNING_SECRET);
     }
-    return c.json({ event, deliveries, observedPrice: observed });
+    const onChain = body.fireOnChain ? await fireEventOnChain(flare, event, { proofHex: encodeProofPayload(event) }) : null;
+    return c.json({ event, deliveries, observedPrice: observed, ftso: live, onChain });
   } catch (e) {
     return c.json({ error: e instanceof Error ? e.message : String(e) }, 400);
   }
@@ -375,7 +433,7 @@ app.post("/v1/fdc/live/address-validity", async (c) => {
     });
 
     let casidEvent = null;
-    if (result.prepare.status === "VALID") {
+    if (result.prepare.status === "VALID" && result.proof?.proof?.length) {
       const { recordEvent, createTopicRecord, findTopicByUri } = await import(
         "./lib/store"
       );
@@ -405,7 +463,7 @@ app.post("/v1/fdc/live/address-validity", async (c) => {
         abiEncodedRequest: result.prepare.abiEncodedRequest,
         submitTx: result.submit?.txHash ?? null,
         votingRound: result.submit?.votingRound ?? null,
-        hasProof: Boolean(result.proof?.proof?.length),
+        hasProof: true,
         live: true,
       };
       casidEvent = {
@@ -420,7 +478,6 @@ app.post("/v1/fdc/live/address-validity", async (c) => {
         attestationType: "WEB2_JSON" as const,
         payload,
         verified: true,
-        mock: false,
         createdAt: new Date().toISOString(),
       };
       recordEvent(store, casidEvent);
@@ -460,61 +517,6 @@ app.get("/v1/ftso/:feed", async (c) => {
     valueUsdApprox: Number(live.value) / 1e18,
     timestamp: live.timestamp.toString(),
     ftsoV2: flare.addresses.FtsoV2,
-  });
-});
-
-app.post("/v1/demo/run", async (c) => {
-  const all = listTopics(store);
-  const paymentTopic =
-    all.find((t) => t.kind === "PAYMENT" && t.uri.includes("/xrp/")) ??
-    all.find((t) => t.kind === "PAYMENT");
-  if (!paymentTopic) return c.json({ error: "No payment topic" }, 500);
-
-  createSubscription(store, {
-    topicUri: paymentTopic.uri,
-    webhookUrl: "casid://log",
-  });
-
-  const flare = await getFlare();
-  const fdc = await requestPaymentAttestation(flare, {
-    chain: "XRPL",
-    txId: `demo-${Date.now()}`,
-  });
-
-  const event = await simulatePaymentAttestation(store, {
-    topicUri: paymentTopic.uri,
-    amount: "25000000",
-    txHash: `demo-${Date.now()}`,
-  });
-  const deliveries = await deliverToSubscribers(store, event, SIGNING_SECRET);
-  // Prefer live on-chain fire when TRIGGER_EXECUTOR + key are configured
-  const onChain = await fireEventOnChain(flare, event);
-
-  // Also try composition evaluation if present
-  const composition = all.find((t) => t.kind === "COMPOSITION");
-  let compositionResult = null;
-  if (composition) {
-    try {
-      compositionResult = evaluateComposition(store, composition.uri);
-    } catch {
-      /* ignore */
-    }
-  }
-
-  return c.json({
-    message: "Casid demo: verified XRP payment event → signed webhook delivery",
-    topic: paymentTopic,
-    event,
-    fdc,
-    mockProof: encodeMockProof(event),
-    deliveries,
-    onChain,
-    composition: compositionResult,
-    meta: {
-      fdcMode: fdcMode(),
-      network: flare.network,
-      protocol: flare.addresses,
-    },
   });
 });
 

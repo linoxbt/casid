@@ -10,6 +10,7 @@ import {TopicLib} from "./libraries/TopicLib.sol";
 contract ProofVerifier {
     IFdcVerification public fdcVerification;
     address public owner;
+    address public consumer;
     bool public mockMode;
 
     /// @dev proofHash => consumed
@@ -20,6 +21,7 @@ contract ProofVerifier {
     );
     event MockModeChanged(bool enabled);
     event FdcVerificationUpdated(address indexed fdc);
+    event ConsumerUpdated(address indexed consumer);
 
     error NotOwner();
     error ProofAlreadyUsed();
@@ -28,6 +30,11 @@ contract ProofVerifier {
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+
+    modifier onlyConsumer() {
+        if (consumer != address(0) && msg.sender != consumer) revert NotOwner();
         _;
     }
 
@@ -50,6 +57,12 @@ contract ProofVerifier {
         emit MockModeChanged(enabled);
     }
 
+    function setConsumer(address _consumer) external onlyOwner {
+        if (_consumer == address(0)) revert ZeroAddress();
+        consumer = _consumer;
+        emit ConsumerUpdated(_consumer);
+    }
+
     function transferOwnership(address newOwner) external onlyOwner {
         if (newOwner == address(0)) revert ZeroAddress();
         owner = newOwner;
@@ -61,6 +74,7 @@ contract ProofVerifier {
     /// @param proofHash Unique hash binding the economic event (caller-defined commitment)
     function verifyAndConsume(bytes32 attestationType, bytes calldata proof, bytes32 proofHash)
         external
+        onlyConsumer
         returns (bool)
     {
         if (usedProofs[proofHash]) revert ProofAlreadyUsed();
@@ -77,6 +91,14 @@ contract ProofVerifier {
 
         usedProofs[proofHash] = true;
         emit ProofAccepted(proofHash, attestationType, msg.sender);
+        return true;
+    }
+
+    function consumeFtsoProof(bytes calldata proof, bytes32 proofHash) external onlyConsumer returns (bool) {
+        if (usedProofs[proofHash]) revert ProofAlreadyUsed();
+        if (proof.length == 0 || proofHash == bytes32(0)) revert ProofInvalid();
+        usedProofs[proofHash] = true;
+        emit ProofAccepted(proofHash, TopicLib.KIND_FTSO_THRESHOLD, msg.sender);
         return true;
     }
 

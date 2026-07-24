@@ -30,6 +30,7 @@ contract CasidTest is Test {
         hub = new SubscriptionHub(address(registry));
         executor =
             new TriggerExecutor(address(verifier), address(registry), address(hub), address(ftso));
+        verifier.setConsumer(address(executor));
 
         vm.deal(alice, 10 ether);
         vm.deal(bob, 10 ether);

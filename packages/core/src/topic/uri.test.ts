@@ -46,4 +46,14 @@ describe("topic URI", () => {
   test("invalid uri throws", () => {
     expect(() => parseTopicUri("http://nope")).toThrow();
   });
+
+  test("evm topic roundtrip", () => {
+    const parsed = parseTopicUri("topic://evm/flr/0x0000000000000000000000000000000000000001/0x12345678");
+    expect(parsed.kind).toBe("EVM_TRANSACTION");
+  });
+
+  test("invalid fasset values throw", () => {
+    expect(() => parseTopicUri("topic://fasset/stake/FXRP")).toThrow();
+    expect(() => parseTopicUri("topic://fasset/mint/FNOPE")).toThrow();
+  });
 });

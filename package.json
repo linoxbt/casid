@@ -17,7 +17,6 @@
     "export:abis": "cd contracts && forge build && bun ../scripts/export-abis.mjs",
     "deploy:local": "cd contracts && forge script script/DeployLocal.s.sol --fork-url http://127.0.0.1:8545 --broadcast -vvv",
     "deploy:coston2": "bash scripts/deploy-coston2.sh",
-    "demo": "bash scripts/demo.sh",
     "test": "bun run --filter @casid/core test && cd contracts && forge test",
     "test:contracts": "cd contracts && forge test",
     "lint": "bun run --filter @casid/web lint"
