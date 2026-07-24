@@ -156,7 +156,7 @@ export async function resolveFlareContext(): Promise<FlareContext> {
 
 /**
  * Encode FTSO feed id as bytes21.
- * Crypto feeds often use hex category 01 + feed name; for demo we also accept
+ * Crypto feeds often use hex category 01 + feed name; for local development we also accept
  * the MockFtsoV2 style of bytes21(bytes("XRP/USD")).
  */
 export function feedIdFromSymbol(feed: string): `0x${string}` {

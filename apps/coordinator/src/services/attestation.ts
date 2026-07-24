@@ -7,35 +7,33 @@ import {
 import type { Store, TopicRecord } from "../lib/store";
 import { findTopicByUri, recordEvent } from "../lib/store";
 
-export interface SimulatePaymentInput {
+export interface PaymentEventInput {
   topicUri: string;
   txHash?: string;
   amount?: string;
   source?: string;
   destination?: string;
+  proofResponse: Record<string, unknown>;
 }
 
 /**
- * Attestation coordinator — MVP uses mock FDC path.
- * Production: requestAttestation → wait round → DA Layer proof → verify.
+ * Record a payment event after FDC proof material is available.
  */
-export async function simulatePaymentAttestation(
+export async function recordPaymentEvent(
   store: Store,
-  input: SimulatePaymentInput,
+  input: PaymentEventInput,
 ): Promise<AttestedEvent> {
   const topic = findTopicByUri(store, input.topicUri);
   if (!topic) throw new Error(`Topic not found: ${input.topicUri}`);
-  if (topic.kind !== "PAYMENT" && topic.kind !== "COMPOSITION") {
-    // allow payment payload on payment topics primarily
+  if (topic.kind !== "PAYMENT") {
+    throw new Error(`Topic is not PAYMENT: ${input.topicUri}`);
   }
 
-  const parsed = parseTopicUri(
-    topic.kind === "COMPOSITION"
-      ? input.topicUri.startsWith("topic://payment")
-        ? input.topicUri
-        : topic.uri
-      : topic.uri,
-  );
+  if (input.amount != null && !/^\d+$/.test(input.amount)) {
+    throw new Error("amount must be an integer string in smallest units");
+  }
+
+  const parsed = parseTopicUri(topic.uri);
 
   let destination = input.destination ?? "unknown";
   let chain = "XRPL";
@@ -49,10 +47,11 @@ export async function simulatePaymentAttestation(
     chain,
     destination,
     amount: input.amount ?? "1000000",
-    txHash: input.txHash ?? `demo-tx-${crypto.randomUUID().slice(0, 8)}`,
-    source: input.source ?? "demo-source",
+    txHash: input.txHash,
+    source: input.source,
+    proofResponse: input.proofResponse,
     blockNumber: Math.floor(Date.now() / 1000),
-    mock: true,
+    live: true,
   };
 
   const proofHash = await proofHashFromPayload(payload);
@@ -70,14 +69,13 @@ export async function simulatePaymentAttestation(
     attestationType: "PAYMENT",
     payload,
     verified: true,
-    mock: true,
     createdAt: new Date().toISOString(),
   };
 
   return recordEvent(store, event);
 }
 
-export async function simulateFtsoCrossing(
+export async function recordFtsoEvent(
   store: Store,
   topicUri: string,
   observedPrice?: number,
@@ -98,7 +96,7 @@ export async function simulateFtsoCrossing(
     threshold: parsed.spec.threshold,
     observedPrice: price,
     crossed: compare(parsed.spec.op, price, parsed.spec.threshold),
-    mock: true,
+    live: true,
   };
 
   if (!payload.crossed) {
@@ -121,7 +119,6 @@ export async function simulateFtsoCrossing(
     attestationType: "FTSO_THRESHOLD",
     payload,
     verified: true,
-    mock: true,
     createdAt: new Date().toISOString(),
   };
 
@@ -145,8 +142,8 @@ function compare(op: string, value: number, threshold: number): boolean {
   }
 }
 
-/** Build opaque proof bytes for on-chain mock verifier */
-export function encodeMockProof(event: AttestedEvent): `0x${string}` {
+/** Build opaque proof bytes for on-chain verifier adapters. */
+export function encodeProofPayload(event: AttestedEvent): `0x${string}` {
   const json = JSON.stringify(event.payload);
   const hex = Buffer.from(json, "utf8").toString("hex");
   return `0x${hex}`;

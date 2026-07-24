@@ -100,7 +100,6 @@ export interface AttestedEvent {
   attestationType: TopicKind;
   payload: Record<string, unknown>;
   verified: boolean;
-  mock?: boolean;
   createdAt: string;
 }
 

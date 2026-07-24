@@ -1,289 +1,80 @@
-"use client";
+import Link from "next/link";
 
-import { useCallback, useEffect, useState } from "react";
-import { api, type CasidEvent, type Delivery, type Topic } from "@/lib/api";
+const capabilities = [
+  ["FDC Payment", "Convert XRP, BTC, and DOGE payment attestations into typed events with durable proof commitments."],
+  ["FTSO Thresholds", "Evaluate live Flare prices against topic thresholds and route verified crossings to subscribers."],
+  ["Proof-Gated Delivery", "Send HMAC-signed webhooks and optional on-chain triggers only after event verification."],
+  ["Topic Fabric", "Define payment, price, web data, asset lifecycle, and composition topics with one URI grammar."],
+];
 
-export default function HomePage() {
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [events, setEvents] = useState<CasidEvent[]>([]);
-  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [health, setHealth] = useState<string>("checking…");
-  const [fdcMode, setFdcMode] = useState<string>("—");
-  const [networkName, setNetworkName] = useState<string>("—");
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [lastProof, setLastProof] = useState<string | null>(null);
-  const [composition, setComposition] = useState<string | null>(null);
+const steps = [
+  ["1", "Define", "Register a topic URI for the economic fact your application depends on."],
+  ["2", "Verify", "Submit a source transaction id or read a live FTSO feed through the coordinator."],
+  ["3", "Deliver", "Fan out signed webhooks and optional contract triggers with proof commitments attached."],
+];
 
-  const refresh = useCallback(async () => {
-    try {
-      const [h, t, e, d, m] = await Promise.all([
-        api.health(),
-        api.topics(),
-        api.events(),
-        api.deliveries(),
-        api.meta().catch(() => null),
-      ]);
-      setHealth(h.ok ? "online" : "degraded");
-      setTopics(t.topics);
-      setEvents(e.events);
-      setDeliveries(d.deliveries);
-      if (m) {
-        setFdcMode(m.fdc?.mode ?? "mock");
-        setNetworkName(m.network.name ?? `chain ${m.network.chainId}`);
-      }
-      setError(null);
-    } catch (err) {
-      setHealth("offline");
-      setError(
-        err instanceof Error
-          ? `${err.message} — start coordinator: bun run dev:coordinator`
-          : "Coordinator unreachable",
-      );
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-    const id = setInterval(() => void refresh(), 5000);
-    return () => clearInterval(id);
-  }, [refresh]);
-
-  async function runDemo() {
-    setBusy(true);
-    setMessage(null);
-    setError(null);
-    try {
-      const res = await api.runDemo();
-      setMessage(res.message);
-      setLastProof(res.mockProof.slice(0, 96) + "…");
-      if (res.composition) {
-        setComposition(
-          `Composition ${res.composition.op.toUpperCase()}: ${res.composition.satisfied ? "SATISFIED" : "pending children"} (${res.composition.children.length} legs)` +
-            (res.onChain?.txHash
-              ? ` · on-chain ${res.onChain.txHash.slice(0, 12)}…`
-              : res.onChain?.mode
-                ? ` · chain ${res.onChain.mode}`
-                : ""),
-        );
-      }
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function firePayment() {
-    const payment = topics.find((t) => t.kind === "PAYMENT");
-    if (!payment) {
-      setError("No payment topic registered");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      // Ensure subscription for log sink
-      await api.subscribe({
-        topicUri: payment.uri,
-        webhookUrl: "casid://log",
-      });
-      const res = await api.attestPayment({
-        topicUri: payment.uri,
-        amount: "10000000",
-      });
-      setMessage(
-        `Verified payment event ${res.event.id.slice(0, 8)}… → ${res.deliveries.length} delivery(ies)`,
-      );
-      setLastProof(res.event.proofHash);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function liveFdc() {
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const res = await api.liveFdcAddressValidity();
-      if (res.error) throw new Error(res.error);
-      setMessage(
-        `Live FDC prepare: ${res.prepare?.status} — ${res.message ?? "AddressValidity"}`,
-      );
-      setLastProof(
-        res.prepare?.abiEncodedRequest
-          ? res.prepare.abiEncodedRequest.slice(0, 96) + "…"
-          : null,
-      );
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function fireFtso() {
-    const ftso = topics.find((t) => t.kind === "FTSO_THRESHOLD");
-    if (!ftso) {
-      setError("No FTSO topic registered");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      await api.subscribe({
-        topicUri: ftso.uri,
-        webhookUrl: "casid://log",
-      });
-      const res = await api.attestFtso({
-        topicUri: ftso.uri,
-        observedPrice: 0.62,
-      });
-      setMessage(
-        `FTSO threshold crossed for ${ftso.uri} → ${res.deliveries.length} delivery(ies)`,
-      );
-      setLastProof(res.event.proofHash);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
+export default function LandingPage() {
   return (
-    <>
-      <section className="hero">
-        <div className="badge-row">
-          <span className="badge accent">Flare-native</span>
-          <span className="badge">FDC · FTSO · FAssets</span>
-          <span className="badge">Coston2-ready</span>
-          <span className="badge">Coordinator {health}</span>
-          <span className="badge">FDC {fdcMode}</span>
-          <span className="badge">{networkName}</span>
-          <a className="badge accent" href="/contracts">
-            Coston2 verified
-          </a>
-        </div>
-        <h1>
-          Economic truth as a
-          <br />
-          typed, attested event bus
-        </h1>
+    <div className="landing-page">
+      <section className="landing-hero">
+        <div className="eyebrow">Flare-native proof infrastructure</div>
+        <h1>Economic events your systems can trust.</h1>
         <p>
-          Casid turns Flare Data Connector proofs and FTSO feeds into durable{" "}
-          <strong>topics</strong> developers subscribe to — like Kafka and Stripe
-          webhooks, but every event is cryptographically verified multi-chain
-          economic reality.
+          Casid turns Flare Data Connector attestations and FTSO feeds into a verified event layer for
+          protocols, fintech backends, and agent platforms that need more than raw indexer data.
         </p>
-        <div className="btn-row">
-          <button className="btn btn-primary" disabled={busy} onClick={runDemo}>
-            {busy ? "Running…" : "Run end-to-end demo"}
-          </button>
-          <button className="btn btn-ghost" disabled={busy} onClick={firePayment}>
-            Simulate XRP payment
-          </button>
-          <button className="btn btn-ghost" disabled={busy} onClick={fireFtso}>
-            Simulate FTSO cross
-          </button>
-          <button className="btn btn-ghost" disabled={busy} onClick={liveFdc}>
-            Live FDC prepare
-          </button>
-          <button className="btn btn-ghost" onClick={() => void refresh()}>
-            Refresh
-          </button>
+        <div className="landing-actions">
+          <Link className="btn btn-primary" href="/app">Launch app</Link>
+          <Link className="btn btn-ghost" href="/app/docs">Read docs</Link>
         </div>
-        {message && <div className="alert success">{message}</div>}
-        {error && <div className="alert error">{error}</div>}
-        {lastProof && (
-          <div className="alert">
-            <strong>Proof hash / commitment</strong>
-            <div className="mono" style={{ marginTop: 6 }}>
-              {lastProof}
-            </div>
-          </div>
-        )}
-        {composition && <div className="alert">{composition}</div>}
       </section>
 
-      <div className="grid cols-3">
-        <div className="card">
-          <div className="stat">{topics.length}</div>
-          <div className="stat-label">Registered topics</div>
-        </div>
-        <div className="card">
-          <div className="stat">{events.length}</div>
-          <div className="stat-label">Verified events</div>
-        </div>
-        <div className="card">
-          <div className="stat">{deliveries.filter((d) => d.status === "delivered").length}</div>
-          <div className="stat-label">Webhook deliveries</div>
-        </div>
-      </div>
+      <section className="landing-band">
+        <div className="metric"><strong>FDC</strong><span>Payment proofs</span></div>
+        <div className="metric"><strong>FTSO</strong><span>Live price thresholds</span></div>
+        <div className="metric"><strong>HMAC</strong><span>Signed webhook delivery</span></div>
+        <div className="metric"><strong>Solidity</strong><span>Proof-gated triggers</span></div>
+      </section>
 
-      <h2 className="section-title">Live topics</h2>
-      <div className="card">
-        <div className="list">
-          {topics.length === 0 && (
-            <p className="muted">No topics yet — start the coordinator.</p>
-          )}
-          {topics.map((t) => (
-            <div key={t.id} className="list-item">
-              <header>
-                <span className="pill">{t.kind}</span>
-                <span className="muted">#{t.onChainId ?? "—"}</span>
-              </header>
-              <div className="mono">{t.uri}</div>
+      <section className="landing-section">
+        <div className="section-copy">
+          <div className="eyebrow">What Casid does</div>
+          <h2>One fabric for payment truth, market truth, and downstream execution.</h2>
+          <p>
+            Applications subscribe to typed topics instead of maintaining their own watchers, feed readers,
+            proof fetchers, signing layer, and trigger coordination.
+          </p>
+        </div>
+        <div className="capability-grid">
+          {capabilities.map(([title, body]) => (
+            <div className="capability" key={title}>
+              <h3>{title}</h3>
+              <p>{body}</p>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      <h2 className="section-title">Recent verified events</h2>
-      <div className="card table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Type</th>
-              <th>Topic</th>
-              <th>Proof</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.slice(0, 8).map((e) => (
-              <tr key={e.id}>
-                <td className="muted">{new Date(e.createdAt).toLocaleTimeString()}</td>
-                <td>
-                  <span className="pill">{e.attestationType}</span>
-                </td>
-                <td className="mono">{e.topicUri.replace("topic://", "")}</td>
-                <td className="mono">{e.proofHash.slice(0, 18)}…</td>
-                <td>
-                  <span className={`pill ${e.verified ? "success" : "warn"}`}>
-                    {e.verified ? (e.mock ? "mock-verified" : "verified") : "pending"}
-                  </span>
-                </td>
-              </tr>
-            ))}
-            {events.length === 0 && (
-              <tr>
-                <td colSpan={5} className="muted">
-                  Run the demo to emit the first attested event.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </>
+      <section className="landing-section split">
+        <div className="section-copy">
+          <div className="eyebrow">Operator flow</div>
+          <h2>From external economic fact to production event in three steps.</h2>
+        </div>
+        <div className="step-list">
+          {steps.map(([n, title, body]) => (
+            <div className="step-card" key={title}>
+              <span>{n}</span>
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="landing-cta">
+        <h2>Launch the console and wire your first verified topic.</h2>
+        <Link className="btn btn-primary" href="/app">Launch app</Link>
+      </section>
+    </div>
   );
 }

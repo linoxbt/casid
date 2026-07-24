@@ -44,9 +44,7 @@ export function evaluateComposition(
     } catch {
       /* */
     }
-    const matched = recent.some(
-      (e) => e.topicUri === uri || topicsRelated(e.topicUri, uri),
-    );
+    const matched = recent.some((e) => e.topicUri === uri);
     return { uri, kind, matched };
   });
 
@@ -56,8 +54,4 @@ export function evaluateComposition(
       : children.some((c) => c.matched);
 
   return { satisfied, op, children };
-}
-
-function topicsRelated(a: string, b: string): boolean {
-  return a === b || a.includes(b.replace("topic://", "")) || b.includes(a.replace("topic://", ""));
 }

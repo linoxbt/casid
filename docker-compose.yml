@@ -1,4 +1,4 @@
-# Optional local stack — not required for MVP (in-memory coordinator is enough)
+# Optional local stack for Casid services.
 services:
   coordinator:
     image: oven/bun:1.2
@@ -8,7 +8,8 @@ services:
     command: bun run --filter @casid/coordinator start
     environment:
       COORDINATOR_PORT: 4100
-      WEBHOOK_SIGNING_SECRET: dev-change-me-casid-hmac
+      WEBHOOK_SIGNING_SECRET: ${WEBHOOK_SIGNING_SECRET:?set WEBHOOK_SIGNING_SECRET}
+      CASID_API_KEY: ${CASID_API_KEY:?set CASID_API_KEY}
       FLARE_RPC_URL: https://coston2-api.flare.network/ext/C/rpc
       FLARE_CHAIN_ID: "114"
     ports:
@@ -22,6 +23,7 @@ services:
     command: bun run --filter @casid/web dev
     environment:
       NEXT_PUBLIC_COORDINATOR_URL: http://localhost:4100
+      NEXT_PUBLIC_CASID_API_KEY: ${CASID_API_KEY:?set CASID_API_KEY}
     ports:
       - "3100:3100"
     depends_on:

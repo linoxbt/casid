@@ -57,7 +57,7 @@ function timingSafeEqual(a: string, b: string): boolean {
   return out === 0;
 }
 
-/** Deterministic event id / proof hash helpers for demo mode */
+/** Deterministic event id / proof hash helpers */
 export async function sha256Hex(input: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
   return bufferToHex(digest);

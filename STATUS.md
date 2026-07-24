@@ -3,16 +3,16 @@
 ## Live on Coston2
 - Contracts deployed + **source verified** (solc 0.8.25, opt 200)
 - `deployments/coston2.json`
-- Demo `fireWithProof` txs on explorer
+- Historical `fireWithProof` txs on explorer
 
 ## Local services
 - Coordinator: http://localhost:4100
-- Console: http://localhost:3100 (restart `bun run dev:web` if contracts page missing)
+- Web: http://localhost:3100
+- App console: http://localhost:3100/app
 - SQLite: `./data/casid.db`
 
 ## Commands
 ```bash
-bun run demo
 bun run deploy:coston2   # already done
 bash scripts/verify-coston2.sh
 ```

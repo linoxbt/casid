@@ -2,10 +2,12 @@ const BASE =
   process.env.NEXT_PUBLIC_COORDINATOR_URL ?? "http://localhost:4100";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const apiKey = process.env.NEXT_PUBLIC_CASID_API_KEY;
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
       ...(init?.headers ?? {}),
     },
     cache: "no-store",
@@ -46,7 +48,6 @@ export type CasidEvent = {
   attestationType: string;
   payload: Record<string, unknown>;
   verified: boolean;
-  mock?: boolean;
   createdAt: string;
 };
 
@@ -112,34 +113,23 @@ export const api = {
     topicUri: string;
     amount?: string;
     txHash?: string;
+    fireOnChain?: boolean;
+    waitRounds?: number;
   }) =>
     request<{
       event: CasidEvent;
-      mockProof: string;
+      fdc: { steps?: string[]; proof?: unknown; prepare?: unknown; submit?: unknown };
       deliveries: Delivery[];
+      onChain?: { ok: boolean; mode?: string; txHash?: string; error?: string } | null;
     }>("/v1/attest/payment", {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  attestFtso: (body: { topicUri: string; observedPrice?: number }) =>
-    request<{ event: CasidEvent; deliveries: Delivery[] }>("/v1/attest/ftso", {
+  attestFtso: (body: { topicUri: string; fireOnChain?: boolean }) =>
+    request<{ event: CasidEvent; deliveries: Delivery[]; observedPrice: number }>("/v1/attest/ftso", {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  runDemo: () =>
-    request<{
-      message: string;
-      event: CasidEvent;
-      deliveries: Delivery[];
-      mockProof: string;
-      composition?: {
-        satisfied: boolean;
-        op: string;
-        children: Array<{ uri: string; kind: string; matched: boolean }>;
-      };
-      onChain?: { ok: boolean; mode?: string; txHash?: string };
-      fdc?: { mode: string; status: string; notes: string[] };
-    }>("/v1/demo/run", { method: "POST", body: "{}" }),
   liveFdcAddressValidity: (address?: string) =>
     request<{
       message?: string;

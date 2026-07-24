@@ -33,8 +33,11 @@ if [[ "$BAL" == "0" ]]; then
   exit 2
 fi
 
-echo "Deploying Casid (mock FDC mode for Casid contracts; protocol FDC is separate)..."
-forge script script/DeployLocal.s.sol \
+echo "Deploying Casid with live Flare protocol addresses..."
+export CASID_USE_MOCKS=false
+export FDC_VERIFICATION_ADDRESS="${FDC_VERIFICATION_ADDRESS:-$(cast call 0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019 'getContractAddressByName(string)(address)' FdcVerification --rpc-url "$RPC")}" 
+export FTSO_V2_ADDRESS="${FTSO_V2_ADDRESS:-$(cast call 0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019 'getContractAddressByName(string)(address)' FtsoV2 --rpc-url "$RPC")}" 
+forge script script/Deploy.s.sol \
   --rpc-url "$RPC" \
   --private-key "$KEY" \
   --broadcast \
@@ -57,8 +60,6 @@ data = {
   "deployer": deployer,
   "deployedAt": datetime.datetime.utcnow().isoformat() + "Z",
   "contracts": {
-    "MockFdcVerification": grab("MockFdcVerification"),
-    "MockFtsoV2": grab("MockFtsoV2"),
     "TopicRegistry": grab("TOPIC_REGISTRY_ADDRESS"),
     "ProofVerifier": grab("PROOF_VERIFIER_ADDRESS"),
     "SubscriptionHub": grab("SUBSCRIPTION_HUB_ADDRESS"),
@@ -69,8 +70,6 @@ data = {
 # also try space-separated forge console2 format
 for line in log.splitlines():
     for key, field in [
-        ("MockFdcVerification", "MockFdcVerification"),
-        ("MockFtsoV2", "MockFtsoV2"),
         ("TOPIC_REGISTRY_ADDRESS", "TopicRegistry"),
         ("PROOF_VERIFIER_ADDRESS", "ProofVerifier"),
         ("SUBSCRIPTION_HUB_ADDRESS", "SubscriptionHub"),
@@ -93,4 +92,3 @@ echo "  export TRIGGER_EXECUTOR_ADDRESS=..."
 echo "  export FLARE_CHAIN_ID=114"
 echo "  export FLARE_RPC_URL=$RPC"
 echo "  export DEPLOYER_PRIVATE_KEY=..."
-echo "  export FDC_MODE=mock   # Casid ProofVerifier mock; use live FDC via /v1/fdc/*"
