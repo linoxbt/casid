@@ -78,7 +78,7 @@ export async function recordPaymentEvent(
 export async function recordFtsoEvent(
   store: Store,
   topicUri: string,
-  observedPrice?: number,
+  observedPrice: number,
 ): Promise<AttestedEvent> {
   const topic = findTopicByUri(store, topicUri);
   if (!topic) throw new Error(`Topic not found: ${topicUri}`);
@@ -88,7 +88,7 @@ export async function recordFtsoEvent(
     throw new Error("Topic is not FTSO_THRESHOLD");
   }
 
-  const price = observedPrice ?? parsed.spec.threshold * 1.1;
+  const price = observedPrice;
   const payload = {
     type: "FTSO_THRESHOLD" as const,
     feed: parsed.spec.feed,

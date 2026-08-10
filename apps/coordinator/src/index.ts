@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context, type Next } from "hono";
 import { cors } from "hono/cors";
 import { parseTopicUri, topicFromSpec, type TopicSpec } from "@casid/core";
 import {
@@ -36,8 +36,14 @@ import {
   preparePayment,
   votingRoundId,
 } from "./services/fdcLive";
-import { readFtsoPriceWei, resolveFlareContext, type FlareContext } from "./services/flare";
 import {
+  readFtsoPriceWei,
+  readProofVerifierMockMode,
+  resolveFlareContext,
+  type FlareContext,
+} from "./services/flare";
+import {
+  checkRateLimit,
   hasValidApiKey,
   originAllowed,
   requireConfiguredSecrets,
@@ -88,28 +94,52 @@ app.use("/v1/*", async (c, next) => {
   return next();
 });
 
-app.get("/health", (c) =>
-  c.json({
+// Rate-limit the routes that trigger real outbound testnet calls and/or
+// on-chain writes, so a leaked or over-scoped API key can't spam them.
+const rateLimited = async (c: Context, next: Next) => {
+  const authHeader = c.req.header("Authorization");
+  const key = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : (c.req.header("x-forwarded-for") ?? "anonymous");
+  const result = checkRateLimit(key);
+  if (!result.allowed) {
+    return c.json(
+      { error: "Rate limit exceeded", retryAfterMs: result.retryAfterMs },
+      429,
+    );
+  }
+  return next();
+};
+app.use("/v1/attest/*", rateLimited);
+app.use("/v1/fdc/*", rateLimited);
+
+app.get("/health", async (c) => {
+  const flare = await getFlare();
+  const onChainVerification = await readProofVerifierMockMode(flare);
+  return c.json({
     ok: true,
     service: "casid-coordinator",
     version: "0.2.0",
     fdcMode: "live",
+    onChainVerification,
     topics: store.topics.size,
     subscriptions: store.subscriptions.size,
     events: store.events.size,
     deliveries: store.deliveries.size,
     persistence: "sqlite",
-  }),
-);
+  });
+});
 
 app.get("/v1/meta", async (c) => {
   const flare = await getFlare();
+  const onChainVerification = await readProofVerifierMockMode(flare);
   return c.json({
     name: "Casid",
     tagline: "Verified Economic Event Fabric for Flare",
     version: "0.2.0",
     fdc: {
       mode: "live",
+      onChainVerification,
       steps: [
         "Prepare FDC request with verifier server",
         "Submit abiEncodedRequest to FdcHub with request fee",
@@ -233,13 +263,22 @@ app.delete("/v1/subscriptions/:id", (c) => {
 
 // --- Events & deliveries ---
 
+function clampLimit(raw: string | undefined, fallback = 100, max = 200): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.min(Math.floor(n), max);
+}
+
 app.get("/v1/events", (c) => {
-  return c.json({ events: listEvents(store) });
+  const limit = clampLimit(c.req.query("limit"));
+  const before = c.req.query("before");
+  return c.json({ events: listEvents(store, limit, before) });
 });
 
 app.get("/v1/deliveries", (c) => {
+  const limit = clampLimit(c.req.query("limit"));
   return c.json({
-    deliveries: listDeliveries(store).map((d) => ({
+    deliveries: listDeliveries(store, limit).map((d) => ({
       ...d,
       signature: d.signature ? `${d.signature.slice(0, 24)}...` : undefined,
     })),

@@ -46,6 +46,31 @@ export function hasValidApiKey(authHeader?: string | null): boolean {
   return token === configured;
 }
 
+const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+
+/**
+ * Simple in-memory fixed-window limiter, keyed by API key (or IP in dev mode).
+ * Single-instance only, matching the rest of this service's architecture —
+ * revisit if the coordinator is ever run as more than one process. Env vars
+ * are read per-call (not cached at module load) so they can be reconfigured
+ * without a restart and are testable in isolation.
+ */
+export function checkRateLimit(key: string): { allowed: boolean; retryAfterMs: number } {
+  const max = Number(process.env.RATE_LIMIT_MAX ?? 30);
+  const windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60_000);
+  const now = Date.now();
+  const bucket = rateLimitBuckets.get(key);
+  if (!bucket || now >= bucket.resetAt) {
+    rateLimitBuckets.set(key, { count: 1, resetAt: now + windowMs });
+    return { allowed: true, retryAfterMs: 0 };
+  }
+  if (bucket.count >= max) {
+    return { allowed: false, retryAfterMs: bucket.resetAt - now };
+  }
+  bucket.count += 1;
+  return { allowed: true, retryAfterMs: 0 };
+}
+
 export function validateWebhookUrl(raw?: string): string | undefined {
   const url = raw?.trim();
   if (!url) return undefined;
@@ -60,7 +85,10 @@ export function validateWebhookUrl(raw?: string): string | undefined {
     throw new Error("webhookUrl must use https://");
   }
 
-  const host = parsed.hostname.toLowerCase();
+  // URL.hostname keeps brackets around IPv6 literals (e.g. "[::1]"); strip
+  // them before IP checks, otherwise isIP() never recognizes it as IPv6 and
+  // this validation silently fails to block IPv6 loopback/private hosts.
+  const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (PRIVATE_HOSTS.has(host) || isPrivateIpv4(host) || isIP(host) === 6) {
     throw new Error("webhookUrl cannot target local or private hosts");
   }

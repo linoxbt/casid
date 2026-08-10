@@ -191,4 +191,35 @@ export async function readFtsoPriceWei(
   }
 }
 
+const proofVerifierMockModeAbi = [
+  {
+    type: "function",
+    name: "mockMode",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "bool" }],
+  },
+] as const;
+
+/**
+ * Reads the deployed ProofVerifier's actual on-chain mockMode flag, so
+ * status endpoints report real verification state instead of an assumed one.
+ */
+export async function readProofVerifierMockMode(
+  ctx: FlareContext,
+): Promise<"live" | "mock" | "unknown"> {
+  if (!ctx.casid.proofVerifier) return "unknown";
+  try {
+    const mockMode = await ctx.client.readContract({
+      address: ctx.casid.proofVerifier,
+      abi: proofVerifierMockModeAbi,
+      functionName: "mockMode",
+    });
+    return mockMode ? "mock" : "live";
+  } catch (err) {
+    console.warn("[flare] failed to read ProofVerifier.mockMode:", err);
+    return "unknown";
+  }
+}
+
 export { ftsoV2Abi, registryAbi };

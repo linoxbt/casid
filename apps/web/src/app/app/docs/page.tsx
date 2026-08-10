@@ -1,4 +1,28 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+
 export default function DocsPage() {
+  const [onChainVerification, setOnChainVerification] = useState<
+    "live" | "mock" | "unknown" | "checking"
+  >("checking");
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .meta()
+      .then((m) => {
+        if (!cancelled) setOnChainVerification(m.fdc?.onChainVerification ?? "unknown");
+      })
+      .catch(() => {
+        if (!cancelled) setOnChainVerification("unknown");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <>
       <section className="hero">
@@ -8,6 +32,37 @@ export default function DocsPage() {
           the topic model, proof flow, delivery contract, and operating assumptions.
         </p>
       </section>
+
+      <div className="card">
+        <h2>On-chain proof verification status</h2>
+        <p className="muted" style={{ lineHeight: 1.6, margin: "0.4rem 0 0" }}>
+          {onChainVerification === "live" && (
+            <>
+              <span className="pill success">live</span> The deployed{" "}
+              <code className="mono">ProofVerifier</code> is verifying real FDC
+              Merkle proofs on-chain.
+            </>
+          )}
+          {onChainVerification === "mock" && (
+            <>
+              <span className="pill">mock</span> The deployed{" "}
+              <code className="mono">ProofVerifier</code> currently runs in{" "}
+              <code className="mono">mockMode</code>: it accepts any non-empty
+              proof rather than cryptographically verifying it. The off-chain
+              FDC prepare/DA-proof pipeline above is genuinely live against
+              Flare testnet infrastructure; only the final on-chain consumption
+              step is not yet enforced.
+            </>
+          )}
+          {(onChainVerification === "unknown" || onChainVerification === "checking") && (
+            <>
+              <span className="pill">unknown</span> Could not determine the
+              on-chain verifier mode (coordinator offline or{" "}
+              <code className="mono">PROOF_VERIFIER_ADDRESS</code> not configured).
+            </>
+          )}
+        </p>
+      </div>
 
       <div className="grid cols-2">
         <div className="card">

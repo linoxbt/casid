@@ -329,6 +329,10 @@ export function deactivateSubscription(store: Store, id: string): Subscription |
 }
 
 export function recordEvent(store: Store, event: AttestedEvent): AttestedEvent {
+  // `live: true` in the payload marks a genuinely live-sourced attestation
+  // (see services/attestation.ts); anything else is recorded as mock-sourced
+  // so the audit trail can distinguish them.
+  const mock = event.payload?.live === true ? 0 : 1;
   store.db
     .query(
       `INSERT INTO events(id, topic_uri, topic_id, proof_hash, event_commitment, attestation_type, payload_json, verified, mock, created_at)
@@ -343,19 +347,32 @@ export function recordEvent(store: Store, event: AttestedEvent): AttestedEvent {
       event.attestationType,
       JSON.stringify(event.payload),
       event.verified ? 1 : 0,
-      0,
+      mock,
       event.createdAt,
     );
   return event;
 }
 
-export function listEvents(store: Store, limit = 100): AttestedEvent[] {
-  const rows = store.db
-    .query(
-      `SELECT id, topic_uri, topic_id, proof_hash, event_commitment, attestation_type, payload_json, verified, mock, created_at
-       FROM events ORDER BY created_at DESC LIMIT ?`,
-    )
-    .all(limit) as Array<{
+export function listEvents(
+  store: Store,
+  limit = 100,
+  before?: string,
+): AttestedEvent[] {
+  const rows = (
+    before
+      ? store.db
+          .query(
+            `SELECT id, topic_uri, topic_id, proof_hash, event_commitment, attestation_type, payload_json, verified, mock, created_at
+             FROM events WHERE created_at < ? ORDER BY created_at DESC LIMIT ?`,
+          )
+          .all(before, limit)
+      : store.db
+          .query(
+            `SELECT id, topic_uri, topic_id, proof_hash, event_commitment, attestation_type, payload_json, verified, mock, created_at
+             FROM events ORDER BY created_at DESC LIMIT ?`,
+          )
+          .all(limit)
+  ) as Array<{
     id: string;
     topic_uri: string;
     topic_id: number | null;

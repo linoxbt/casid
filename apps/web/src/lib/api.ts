@@ -63,7 +63,15 @@ export type Delivery = {
 };
 
 export const api = {
-  health: () => request<{ ok: boolean; topics: number }>("/health"),
+  health: () =>
+    request<{
+      ok: boolean;
+      topics: number;
+      subscriptions: number;
+      events: number;
+      deliveries: number;
+      onChainVerification: "live" | "mock" | "unknown";
+    }>("/health"),
   meta: () =>
     request<{
       name: string;
@@ -79,7 +87,12 @@ export const api = {
       protocol?: Record<string, string | undefined>;
       contracts: Record<string, string | null>;
       primitives: string[];
-      fdc?: { mode: string; steps: string[]; docs: string };
+      fdc?: {
+        mode: string;
+        onChainVerification?: "live" | "mock" | "unknown";
+        steps: string[];
+        docs: string;
+      };
     }>("/v1/meta"),
   evaluateComposition: (topicUri: string) =>
     request<{
@@ -107,8 +120,18 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  events: () => request<{ events: CasidEvent[] }>("/v1/events"),
-  deliveries: () => request<{ deliveries: Delivery[] }>("/v1/deliveries"),
+  unsubscribe: (id: string) =>
+    request<{ subscription: Subscription }>(`/v1/subscriptions/${id}`, {
+      method: "DELETE",
+    }),
+  events: (limit?: number) =>
+    request<{ events: CasidEvent[] }>(
+      `/v1/events${limit ? `?limit=${limit}` : ""}`,
+    ),
+  deliveries: (limit?: number) =>
+    request<{ deliveries: Delivery[] }>(
+      `/v1/deliveries${limit ? `?limit=${limit}` : ""}`,
+    ),
   attestPayment: (body: {
     topicUri: string;
     amount?: string;
@@ -117,9 +140,11 @@ export const api = {
     waitRounds?: number;
   }) =>
     request<{
-      event: CasidEvent;
+      status?: "pending_proof";
+      error?: string;
+      event?: CasidEvent;
       fdc: { steps?: string[]; proof?: unknown; prepare?: unknown; submit?: unknown };
-      deliveries: Delivery[];
+      deliveries?: Delivery[];
       onChain?: { ok: boolean; mode?: string; txHash?: string; error?: string } | null;
     }>("/v1/attest/payment", {
       method: "POST",

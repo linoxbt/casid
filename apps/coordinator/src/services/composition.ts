@@ -41,8 +41,8 @@ export function evaluateComposition(
     let kind = "UNKNOWN";
     try {
       kind = parseTopicUri(uri).kind;
-    } catch {
-      /* */
+    } catch (err) {
+      console.warn(`[composition] failed to parse child topic URI "${uri}":`, err);
     }
     const matched = recent.some((e) => e.topicUri === uri);
     return { uri, kind, matched };

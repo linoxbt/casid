@@ -1,10 +1,15 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 
 export type Db = Database;
 
-const DEFAULT_PATH = process.env.DATABASE_PATH ?? "./data/casid.db";
+// Resolve relative to the coordinator package root (not process.cwd()), so the
+// same database file is used whether the process is started from the repo
+// root or from apps/coordinator/ — cwd-relative paths previously caused two
+// independent SQLite files to exist depending on launch directory.
+const DEFAULT_PATH =
+  process.env.DATABASE_PATH ?? join(import.meta.dir, "../../data/casid.db");
 
 export function openDb(path = DEFAULT_PATH): Db {
   mkdirSync(dirname(path), { recursive: true });

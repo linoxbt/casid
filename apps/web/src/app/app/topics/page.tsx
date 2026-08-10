@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, type Topic } from "@/lib/api";
+import { api, type Subscription, type Topic } from "@/lib/api";
 
 export default function TopicsPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [uri, setUri] = useState("topic://payment/xrp/rYourDestinationHere");
   const [webhook, setWebhook] = useState("");
   const [selected, setSelected] = useState<string>("");
@@ -13,9 +14,10 @@ export default function TopicsPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await api.topics();
-      setTopics(res.topics);
-      if (!selected && res.topics[0]) setSelected(res.topics[0].uri);
+      const [topicsRes, subsRes] = await Promise.all([api.topics(), api.subscriptions()]);
+      setTopics(topicsRes.topics);
+      setSubscriptions(subsRes.subscriptions);
+      if (!selected && topicsRes.topics[0]) setSelected(topicsRes.topics[0].uri);
       setErr(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -47,6 +49,19 @@ export default function TopicsPage() {
         webhookUrl: webhook.trim(),
       });
       setMsg(`Subscribed ${res.subscription.id.slice(0, 8)}… → ${webhook}`);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function unsubscribe(id: string) {
+    setMsg(null);
+    setErr(null);
+    try {
+      await api.unsubscribe(id);
+      setMsg(`Unsubscribed ${id.slice(0, 8)}…`);
+      await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     }
@@ -117,6 +132,32 @@ export default function TopicsPage() {
             </button>
           </div>
         </div>
+      </div>
+
+      <h2 className="section-title">Active subscriptions</h2>
+      <div className="list">
+        {subscriptions
+          .filter((s) => s.active)
+          .map((s) => (
+            <div key={s.id} className="list-item">
+              <header>
+                <span className="pill">{s.webhookUrl ? "webhook" : "on-chain only"}</span>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => unsubscribe(s.id)}
+                  style={{ marginLeft: "auto" }}
+                >
+                  Unsubscribe
+                </button>
+              </header>
+              <div className="mono">{s.topicUri}</div>
+              {s.webhookUrl && <div className="muted mono">{s.webhookUrl}</div>}
+            </div>
+          ))}
+        {subscriptions.filter((s) => s.active).length === 0 && (
+          <div className="card muted">No active subscriptions yet.</div>
+        )}
       </div>
 
       <h2 className="section-title">Attestation pipeline</h2>
