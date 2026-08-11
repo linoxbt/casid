@@ -32,6 +32,23 @@
     "paymentTopic": 1,
     "ftsoTopic": 2
   },
+  "onChainVerification": {
+    "status": "live",
+    "setAt": "2026-08-11T07:11:34Z",
+    "note": "ProofVerifier.mockMode flipped false via contracts/script/SetLive.s.sol. On-chain proof consumption now verifies real FDC Merkle proofs via FdcVerification, and TriggerExecutor.fireFtsoThreshold reads the real FtsoV2 feed, instead of the MockFdcVerification/MockFtsoV2 contracts used at initial deploy.",
+    "fdcVerification": "0x906507E0B64bcD494Db73bd0459d1C667e14B933",
+    "ftsoV2": "0xC4e9c78EA53db782E28f28Fdf80BaF59336B304d",
+    "transactions": {
+      "setFdcVerification": "0x5c599aad36e6b34dc1f0215e56c67085ca59a228650b05eb4c7a9cbb7c45a9ad",
+      "setMockMode": "0x07cba15af31b000600f15f33553c115ad2f818af50e29901857e697d6157f45a",
+      "setFtsoV2": "0x6402c192137929a07c3698e1085cdb7bfe978bc49a740c997c809190031ba327"
+    },
+    "explorer": {
+      "setFdcVerification": "https://coston2-explorer.flare.network/tx/0x5c599aad36e6b34dc1f0215e56c67085ca59a228650b05eb4c7a9cbb7c45a9ad",
+      "setMockMode": "https://coston2-explorer.flare.network/tx/0x07cba15af31b000600f15f33553c115ad2f818af50e29901857e697d6157f45a",
+      "setFtsoV2": "https://coston2-explorer.flare.network/tx/0x6402c192137929a07c3698e1085cdb7bfe978bc49a740c997c809190031ba327"
+    }
+  },
   "verified": true,
   "verification": {
     "compiler": "0.8.25",

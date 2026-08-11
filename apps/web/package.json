@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3100",
-    "build": "next build",
-    "start": "next start",
+    "dev": "bun --env-file=../../.env run next dev -p 3100",
+    "build": "bun --env-file=../../.env run next build",
+    "start": "bun --env-file=../../.env run next start",
     "lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0"
   },
   "dependencies": {
