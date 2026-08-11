@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteHeader } from "@/components/site-header";
 
 const ticker = [
   "FDC payment proofs",
@@ -8,20 +9,29 @@ const ticker = [
   "Coston2 verification",
 ];
 
-const stages = [
-  ["Verify", "Submit a real transaction id or live feed check against the Flare-backed coordinator."],
-  ["Attest", "Package the proof commitment and delivery metadata into a signed economic event."],
-  ["Anchor", "Fan it out through webhooks or on-chain triggers with the record already traceable."],
+const capabilities = [
+  "FDC Payment Proofs",
+  "FTSO Price Thresholds",
+  "HMAC Signed Webhooks",
+  "On-chain Triggers",
+  "Coston2 Testnet",
 ];
 
-const surfaces = [
-  ["App console", "Topic creation, proof submission, webhook subscriptions, and the event ledger in one place."],
-  ["Docs", "The topic model, proof flow, and Flare integration explained without the product fluff."],
+const features = [
+  ["Proof-gated", "Nothing fires until Flare's FDC or FTSO has verified it — not a raw indexer claim."],
+  ["Signed delivery", "Every event ships as an HMAC-signed webhook with retries and a durable ledger."],
+  ["On-chain triggers", "The same proof that signs your webhook can fire a Solidity trigger, gated on-chain."],
+];
+
+const steps = [
+  ["Create a topic", "Register a payment, price-threshold, or composition topic with a typed URI."],
+  ["Verify or subscribe", "Submit a real proof, or subscribe a webhook to watch a topic continuously."],
+  ["Get the verified event", "A signed, proof-backed record lands in your ledger and your endpoint."],
 ];
 
 export default function LandingPage() {
   return (
-    <div>
+    <div className="theme-shell">
       <div className="ticker" aria-hidden="true">
         <div className="ticker-track">
           {[...ticker, ...ticker].map((item, index) => (
@@ -30,72 +40,51 @@ export default function LandingPage() {
         </div>
       </div>
 
-      <div className="page-frame">
-        <header className="site-header">
-          <Link href="/" className="brand brand-inline">
-            <span className="brand-mark">C</span>
-            <span>
-              Casid
-              <small>Verified Economic Event Fabric</small>
-            </span>
-          </Link>
-          <div className="site-actions">
-            <Link href="/app" className="site-link">Dashboard</Link>
-            <Link href="/app/docs" className="site-link">Docs</Link>
-            <Link href="/app" className="btn btn-primary">Launch app</Link>
-          </div>
-        </header>
+      <SiteHeader />
 
-        <main>
+      <main>
+        <div className="page-frame">
           <section className="hero-grid">
-            <div>
-              <p className="eyebrow">Flare-native verification infrastructure</p>
-              <h1>Economic events your systems can trust.</h1>
-              <p className="hero-copy">
-                Casid turns Flare Data Connector attestations and FTSO feeds into a verified event layer
-                for protocols, fintech backends, and agent platforms that need more than raw indexer data.
-              </p>
-              <div className="hero-actions">
-                <Link className="btn btn-primary" href="/app">Launch app</Link>
-                <Link className="btn btn-ghost" href="/app/docs">Read docs</Link>
-              </div>
+            <p className="eyebrow">Flare-native · FDC + FTSO</p>
+            <h1>The verified event layer for Flare.</h1>
+            <p className="hero-copy">
+              Proof-gated payments, price thresholds, and webhooks for protocols and backends that
+              need more than raw indexer data.
+            </p>
+            <div className="hero-actions">
+              <Link className="btn btn-primary" href="/app">Launch app</Link>
+              <Link className="btn btn-ghost" href="/app/docs">Read docs</Link>
             </div>
+          </section>
+        </div>
 
-            <div className="hero-panel">
-              <div className="hero-panel-header">
-                <span>System status</span>
-                <span className="pill success">live</span>
-              </div>
-              <div className="status-grid">
-                <div>
-                  <strong>FDC</strong>
-                  <span>Payment proofs</span>
-                </div>
-                <div>
-                  <strong>FTSO</strong>
-                  <span>Live threshold feeds</span>
-                </div>
-                <div>
-                  <strong>HMAC</strong>
-                  <span>Signed delivery</span>
-                </div>
-                <div>
-                  <strong>Solidity</strong>
-                  <span>On-chain triggers</span>
-                </div>
-              </div>
+        <div className="capability-strip">
+          {capabilities.map((c) => (
+            <span className="pill" key={c}>{c}</span>
+          ))}
+        </div>
+
+        <div className="page-frame">
+          <section className="section-block centered">
+            <div className="section-copy">
+              <p className="eyebrow">One model</p>
+              <h2>Every economic fact, one typed topic.</h2>
+              <p>
+                <code className="mono">topic://payment/xrp/{"{destination}"}</code> and{" "}
+                <code className="mono">topic://ftso/price/{"{feed}"}/threshold/{"{op}"}/{"{value}"}</code>{" "}
+                — the same shape whether you&apos;re watching a wallet or a price feed.
+              </p>
             </div>
           </section>
 
           <section className="section-block">
             <div className="section-copy">
-              <p className="eyebrow">How it works</p>
-              <h2>Three checks, one verified record.</h2>
+              <p className="eyebrow">Why Casid</p>
+              <h2>Verification, not indexing.</h2>
             </div>
             <div className="step-grid">
-              {stages.map(([title, body], index) => (
+              {features.map(([title, body]) => (
                 <article className="step-card" key={title}>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
                   <h3>{title}</h3>
                   <p>{body}</p>
                 </article>
@@ -103,15 +92,15 @@ export default function LandingPage() {
             </div>
           </section>
 
-          <section className="section-block split">
+          <section className="section-block">
             <div className="section-copy">
-              <p className="eyebrow">Two surfaces</p>
-              <h2>One engine, two ways to operate it.</h2>
+              <p className="eyebrow">Getting started</p>
+              <h2>Three steps to a verified event.</h2>
             </div>
-            <div className="surface-grid">
-              {surfaces.map(([title, body]) => (
-                <article className="surface-card" key={title}>
-                  <p className="surface-label">surface</p>
+            <div className="step-grid">
+              {steps.map(([title, body], index) => (
+                <article className="step-card" key={title}>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
                   <h3>{title}</h3>
                   <p>{body}</p>
                 </article>
@@ -126,13 +115,39 @@ export default function LandingPage() {
             </div>
             <Link className="btn btn-primary" href="/app">Open dashboard</Link>
           </section>
-        </main>
+        </div>
+      </main>
 
-        <footer className="site-footer">
-          <span>Built on Flare · FDC · FTSO · FAssets</span>
+      <footer className="site-footer">
+        <div className="page-frame footer-cols">
+          <div className="footer-col">
+            <Link href="/" className="brand">
+              <span className="brand-mark">C</span>
+              Casid
+            </Link>
+            <p className="muted" style={{ marginTop: "0.75rem", fontSize: "0.86rem", lineHeight: 1.55 }}>
+              Verified economic event fabric for Flare.
+            </p>
+          </div>
+          <div className="footer-col">
+            <h4>Product</h4>
+            <Link href="/app">Dashboard</Link>
+            <Link href="/app/topics">Topics</Link>
+            <Link href="/app/verify">Verify</Link>
+            <Link href="/app/events">Events</Link>
+          </div>
+          <div className="footer-col">
+            <h4>Resources</h4>
+            <Link href="/app/docs">Docs</Link>
+            <a href="https://github.com/linoxbt/casid" target="_blank" rel="noreferrer">GitHub</a>
+            <a href="https://coston2-explorer.flare.network" target="_blank" rel="noreferrer">Coston2 Explorer</a>
+          </div>
+        </div>
+        <div className="page-frame footer-bottom">
+          <span>Built on Flare · FDC · FTSO</span>
           <span>Casid © 2026</span>
-        </footer>
-      </div>
+        </div>
+      </footer>
     </div>
   );
 }
