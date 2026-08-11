@@ -95,12 +95,14 @@ app.use("/v1/*", async (c, next) => {
 });
 
 // Rate-limit the routes that trigger real outbound testnet calls and/or
-// on-chain writes, so a leaked or over-scoped API key can't spam them.
+// on-chain writes, so a leaked or over-scoped API key can't spam them. Keyed
+// by the authenticated API key only — client-supplied headers like
+// x-forwarded-for are trivially spoofable and would let each request claim a
+// fresh bucket, defeating the limit entirely. Unauthenticated callers (dev
+// mode with no CASID_API_KEY configured) share a single bucket instead.
 const rateLimited = async (c: Context, next: Next) => {
   const authHeader = c.req.header("Authorization");
-  const key = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : (c.req.header("x-forwarded-for") ?? "anonymous");
+  const key = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : "anonymous";
   const result = checkRateLimit(key);
   if (!result.allowed) {
     return c.json(

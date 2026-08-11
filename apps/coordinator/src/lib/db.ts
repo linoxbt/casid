@@ -1,19 +1,27 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 
 export type Db = Database;
 
-// Resolve relative to the coordinator package root (not process.cwd()), so the
-// same database file is used whether the process is started from the repo
-// root or from apps/coordinator/ — cwd-relative paths previously caused two
-// independent SQLite files to exist depending on launch directory.
-const DEFAULT_PATH =
-  process.env.DATABASE_PATH ?? join(import.meta.dir, "../../data/casid.db");
+// Coordinator package root, independent of process.cwd().
+const PACKAGE_ROOT = join(import.meta.dir, "../..");
 
-export function openDb(path = DEFAULT_PATH): Db {
-  mkdirSync(dirname(path), { recursive: true });
-  const db = new Database(path, { create: true });
+const DEFAULT_PATH = "./data/casid.db";
+
+/**
+ * Any relative path — whether explicitly passed in, from DATABASE_PATH, or
+ * the default — is resolved against the coordinator package root rather than
+ * process.cwd(). A caller passing an already-relative path (as index.ts's own
+ * `process.env.DATABASE_PATH ?? "./data/casid.db"` does) would otherwise
+ * still be cwd-dependent, silently defeating this fix; resolving here,
+ * unconditionally, is what actually makes the path stable regardless of
+ * launch directory.
+ */
+export function openDb(path: string = DEFAULT_PATH): Db {
+  const resolved = isAbsolute(path) ? path : join(PACKAGE_ROOT, path);
+  mkdirSync(dirname(resolved), { recursive: true });
+  const db = new Database(resolved, { create: true });
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA foreign_keys = ON;");
   migrate(db);

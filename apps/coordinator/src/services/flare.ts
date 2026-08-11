@@ -201,21 +201,33 @@ const proofVerifierMockModeAbi = [
   },
 ] as const;
 
+type MockModeResult = "live" | "mock" | "unknown";
+let mockModeCache: { value: MockModeResult; expiresAt: number } | null = null;
+const MOCK_MODE_CACHE_TTL_MS = 30_000;
+
 /**
  * Reads the deployed ProofVerifier's actual on-chain mockMode flag, so
  * status endpoints report real verification state instead of an assumed one.
+ * Cached briefly — /health and /v1/meta are both polled every few seconds by
+ * the dashboard and each call this, so an uncached read doubles live RPC
+ * calls for a flag that only changes when an operator runs SetLive.s.sol.
  */
 export async function readProofVerifierMockMode(
   ctx: FlareContext,
-): Promise<"live" | "mock" | "unknown"> {
+): Promise<MockModeResult> {
   if (!ctx.casid.proofVerifier) return "unknown";
+  if (mockModeCache && Date.now() < mockModeCache.expiresAt) {
+    return mockModeCache.value;
+  }
   try {
     const mockMode = await ctx.client.readContract({
       address: ctx.casid.proofVerifier,
       abi: proofVerifierMockModeAbi,
       functionName: "mockMode",
     });
-    return mockMode ? "mock" : "live";
+    const value: MockModeResult = mockMode ? "mock" : "live";
+    mockModeCache = { value, expiresAt: Date.now() + MOCK_MODE_CACHE_TTL_MS };
+    return value;
   } catch (err) {
     console.warn("[flare] failed to read ProofVerifier.mockMode:", err);
     return "unknown";

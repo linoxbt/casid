@@ -34,7 +34,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       type="button"
       onClick={toggleTheme}
       aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
-      className={`inline-flex h-8 w-8 items-center justify-center rounded-sm border border-line text-ink/75 transition hover:border-accent/50 hover:text-accent ${className}`}
+      className={`theme-toggle ${className}`}
     >
       <span suppressHydrationWarning>{theme === "light" ? <MoonIcon /> : <SunIcon />}</span>
     </button>

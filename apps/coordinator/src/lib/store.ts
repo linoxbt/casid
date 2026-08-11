@@ -353,6 +353,13 @@ export function recordEvent(store: Store, event: AttestedEvent): AttestedEvent {
   return event;
 }
 
+/**
+ * `before`, when given, is the `id` of an already-seen event (e.g. the last
+ * item of a previous page) — pagination walks SQLite's own `rowid`, not
+ * `created_at`, since createdAt is only millisecond-precision and a strict
+ * `created_at < ?` comparison would silently drop any sibling event recorded
+ * in the same millisecond as the cursor.
+ */
 export function listEvents(
   store: Store,
   limit = 100,
@@ -363,13 +370,13 @@ export function listEvents(
       ? store.db
           .query(
             `SELECT id, topic_uri, topic_id, proof_hash, event_commitment, attestation_type, payload_json, verified, mock, created_at
-             FROM events WHERE created_at < ? ORDER BY created_at DESC LIMIT ?`,
+             FROM events WHERE rowid < (SELECT rowid FROM events WHERE id = ?) ORDER BY rowid DESC LIMIT ?`,
           )
           .all(before, limit)
       : store.db
           .query(
             `SELECT id, topic_uri, topic_id, proof_hash, event_commitment, attestation_type, payload_json, verified, mock, created_at
-             FROM events ORDER BY created_at DESC LIMIT ?`,
+             FROM events ORDER BY rowid DESC LIMIT ?`,
           )
           .all(limit)
   ) as Array<{

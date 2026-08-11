@@ -3,6 +3,56 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type Topic } from "@/lib/api";
 
+function useSubmission() {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const run = useCallback(async (fn: () => Promise<void>) => {
+    setErr(null);
+    setBusy(true);
+    try {
+      await fn();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  return { busy, err, setErr, run };
+}
+
+function useDefaultTopic(topics: Topic[]) {
+  const [topicUri, setTopicUri] = useState("");
+  useEffect(() => {
+    if (!topicUri && topics[0]) setTopicUri(topics[0].uri);
+  }, [topics, topicUri]);
+  return [topicUri, setTopicUri] as const;
+}
+
+function TopicSelect({
+  topics,
+  value,
+  onChange,
+  emptyLabel,
+}: {
+  topics: Topic[];
+  value: string;
+  onChange: (v: string) => void;
+  emptyLabel: string;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      {topics.length === 0 && <option value="">{emptyLabel}</option>}
+      {topics.map((t) => (
+        <option key={t.id} value={t.uri}>
+          {t.uri}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export default function VerifyPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -51,31 +101,18 @@ export default function VerifyPage() {
 }
 
 function PaymentCard({ topics, onSettled }: { topics: Topic[]; onSettled: () => void }) {
-  const [topicUri, setTopicUri] = useState("");
+  const [topicUri, setTopicUri] = useDefaultTopic(topics);
   const [txHash, setTxHash] = useState("");
   const [amount, setAmount] = useState("");
   const [fireOnChain, setFireOnChain] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const { busy, err, run } = useSubmission();
 
-  useEffect(() => {
-    if (!topicUri && topics[0]) setTopicUri(topics[0].uri);
-  }, [topics, topicUri]);
-
-  async function submit() {
+  function submit() {
     setMsg(null);
-    setErr(null);
-    if (!topicUri) {
-      setErr("Create a payment topic first.");
-      return;
-    }
-    if (!txHash.trim()) {
-      setErr("txHash is required for FDC Payment attestation.");
-      return;
-    }
-    setBusy(true);
-    try {
+    run(async () => {
+      if (!topicUri) throw new Error("Create a payment topic first.");
+      if (!txHash.trim()) throw new Error("txHash is required for FDC Payment attestation.");
       const res = await api.attestPayment({
         topicUri,
         txHash: txHash.trim(),
@@ -92,11 +129,7 @@ function PaymentCard({ topics, onSettled }: { topics: Topic[]; onSettled: () => 
         );
       }
       onSettled();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   return (
@@ -105,14 +138,12 @@ function PaymentCard({ topics, onSettled }: { topics: Topic[]; onSettled: () => 
       <div className="form">
         <label>
           Payment topic
-          <select value={topicUri} onChange={(e) => setTopicUri(e.target.value)}>
-            {topics.length === 0 && <option value="">No PAYMENT topics yet</option>}
-            {topics.map((t) => (
-              <option key={t.id} value={t.uri}>
-                {t.uri}
-              </option>
-            ))}
-          </select>
+          <TopicSelect
+            topics={topics}
+            value={topicUri}
+            onChange={setTopicUri}
+            emptyLabel="No PAYMENT topics yet"
+          />
         </label>
         <label>
           Transaction id
@@ -147,35 +178,21 @@ function PaymentCard({ topics, onSettled }: { topics: Topic[]; onSettled: () => 
 }
 
 function FtsoCard({ topics, onSettled }: { topics: Topic[]; onSettled: () => void }) {
-  const [topicUri, setTopicUri] = useState("");
+  const [topicUri, setTopicUri] = useDefaultTopic(topics);
   const [fireOnChain, setFireOnChain] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const { busy, err, run } = useSubmission();
 
-  useEffect(() => {
-    if (!topicUri && topics[0]) setTopicUri(topics[0].uri);
-  }, [topics, topicUri]);
-
-  async function submit() {
+  function submit() {
     setMsg(null);
-    setErr(null);
-    if (!topicUri) {
-      setErr("Create an FTSO threshold topic first.");
-      return;
-    }
-    setBusy(true);
-    try {
+    run(async () => {
+      if (!topicUri) throw new Error("Create an FTSO threshold topic first.");
       const res = await api.attestFtso({ topicUri, fireOnChain });
       setMsg(
         `Observed price ${res.observedPrice} crossed the threshold — event ${res.event.proofHash.slice(0, 16)}… recorded (${res.deliveries.length} deliveries).`,
       );
       onSettled();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   return (
@@ -184,14 +201,12 @@ function FtsoCard({ topics, onSettled }: { topics: Topic[]; onSettled: () => voi
       <div className="form">
         <label>
           Price topic
-          <select value={topicUri} onChange={(e) => setTopicUri(e.target.value)}>
-            {topics.length === 0 && <option value="">No FTSO_THRESHOLD topics yet</option>}
-            {topics.map((t) => (
-              <option key={t.id} value={t.uri}>
-                {t.uri}
-              </option>
-            ))}
-          </select>
+          <TopicSelect
+            topics={topics}
+            value={topicUri}
+            onChange={setTopicUri}
+            emptyLabel="No FTSO_THRESHOLD topics yet"
+          />
         </label>
         <label style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <input
@@ -217,35 +232,21 @@ function FtsoCard({ topics, onSettled }: { topics: Topic[]; onSettled: () => voi
 }
 
 function CompositionCard({ topics }: { topics: Topic[] }) {
-  const [topicUri, setTopicUri] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [topicUri, setTopicUri] = useDefaultTopic(topics);
   const [result, setResult] = useState<{
     satisfied: boolean;
     op: string;
     children: Array<{ uri: string; kind: string; matched: boolean }>;
   } | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const { busy, err, run } = useSubmission();
 
-  useEffect(() => {
-    if (!topicUri && topics[0]) setTopicUri(topics[0].uri);
-  }, [topics, topicUri]);
-
-  async function submit() {
-    setErr(null);
+  function submit() {
     setResult(null);
-    if (!topicUri) {
-      setErr("Create a composition topic first.");
-      return;
-    }
-    setBusy(true);
-    try {
+    run(async () => {
+      if (!topicUri) throw new Error("Create a composition topic first.");
       const res = await api.evaluateComposition(topicUri);
       setResult(res);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   return (
@@ -254,14 +255,12 @@ function CompositionCard({ topics }: { topics: Topic[] }) {
       <div className="form">
         <label>
           Composition topic
-          <select value={topicUri} onChange={(e) => setTopicUri(e.target.value)}>
-            {topics.length === 0 && <option value="">No COMPOSITION topics yet</option>}
-            {topics.map((t) => (
-              <option key={t.id} value={t.uri}>
-                {t.uri}
-              </option>
-            ))}
-          </select>
+          <TopicSelect
+            topics={topics}
+            value={topicUri}
+            onChange={setTopicUri}
+            emptyLabel="No COMPOSITION topics yet"
+          />
         </label>
         <button className="btn btn-primary" onClick={submit} disabled={busy || !topics.length}>
           {busy ? "Evaluating…" : "Evaluate"}
@@ -294,15 +293,12 @@ function CompositionCard({ topics }: { topics: Topic[] }) {
 
 function AddressValidityCard() {
   const [address, setAddress] = useState("rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe");
-  const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const { busy, err, setErr, run } = useSubmission();
 
-  async function submit() {
+  function submit() {
     setMsg(null);
-    setErr(null);
-    setBusy(true);
-    try {
+    run(async () => {
       const res = await api.liveFdcAddressValidity(address.trim() || undefined);
       if (res.error) {
         setErr(res.error);
@@ -311,11 +307,7 @@ function AddressValidityCard() {
           `Prepare status: ${res.prepare?.status ?? "unknown"}${res.casidEvent ? ` — event ${res.casidEvent.proofHash.slice(0, 16)}… recorded` : ""}`,
         );
       }
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
   return (

@@ -120,8 +120,13 @@ describe("events", () => {
     expect(listEvents(store, 10).some((e) => e.proofHash === "0xlive")).toBe(true);
   });
 
-  it("supports a limit and a before cursor", () => {
-    const now = Date.now();
+  it("supports a limit and a before cursor keyed by event id", () => {
+    // Same createdAt timestamp for all three — regression test for the
+    // pagination bug where a strict `created_at < ?` comparison would
+    // silently drop same-millisecond siblings. Cursoring by rowid (via the
+    // `before` event id) must not lose them.
+    const sameInstant = new Date().toISOString();
+    const ids: string[] = [];
     for (let i = 0; i < 3; i++) {
       const event: AttestedEvent = {
         id: crypto.randomUUID(),
@@ -131,14 +136,19 @@ describe("events", () => {
         attestationType: "PAYMENT",
         payload: { live: true },
         verified: true,
-        createdAt: new Date(now + i * 1000).toISOString(),
+        createdAt: sameInstant,
       };
       recordEvent(store, event);
+      ids.push(event.id);
     }
     const firstPage = listEvents(store, 1);
     expect(firstPage).toHaveLength(1);
-    const secondPage = listEvents(store, 10, firstPage[0]!.createdAt);
-    expect(secondPage.every((e) => e.createdAt < firstPage[0]!.createdAt)).toBe(true);
+    expect(firstPage[0]!.proofHash).toBe("0xpage2"); // most recently inserted (rowid DESC)
+
+    const secondPage = listEvents(store, 10, firstPage[0]!.id);
+    expect(secondPage.some((e) => e.proofHash === "0xpage1")).toBe(true);
+    expect(secondPage.some((e) => e.proofHash === "0xpage0")).toBe(true);
+    expect(secondPage.some((e) => e.id === firstPage[0]!.id)).toBe(false);
   });
 });
 
