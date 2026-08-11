@@ -1,0 +1,26 @@
+[build]
+  # Repo root context (not a "base" dir) — @casid/web depends on the
+  # @casid/core workspace package, so `bun install` must run at the monorepo
+  # root to resolve workspaces, and @casid/core must be built (its dist/ is
+  # what gets imported) before @casid/web builds.
+  command = "bun install && bun run --filter @casid/core build && bun run --filter @casid/web build"
+  publish = "apps/web/.next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# The web console talks to the coordinator over NEXT_PUBLIC_COORDINATOR_URL
+# (defaults to http://localhost:4100, which will not work in production).
+# Set these in the Netlify UI (Site configuration -> Environment variables),
+# not here, since values differ per environment and NEXT_PUBLIC_* vars are
+# inlined into the client bundle at build time:
+#   NEXT_PUBLIC_COORDINATOR_URL
+#   NEXT_PUBLIC_CHAIN_ID
+#   NEXT_PUBLIC_RPC_URL
+#   NEXT_PUBLIC_TOPIC_REGISTRY_ADDRESS
+#   NEXT_PUBLIC_SUBSCRIPTION_HUB_ADDRESS
+#   NEXT_PUBLIC_TRIGGER_EXECUTOR_ADDRESS
+#   NEXT_PUBLIC_CASID_API_KEY (optional)
