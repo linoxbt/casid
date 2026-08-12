@@ -5,6 +5,7 @@
 
 import {
   createWalletClient,
+  encodeAbiParameters,
   http,
   type Address,
   type Hex,
@@ -15,6 +16,136 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import type { FlareContext } from "./flare";
 import type { AttestedEvent } from "@casid/core";
+
+// Mirrors IPayment.Proof from contracts/src/interfaces/IPayment.sol exactly —
+// field names/order/types must match Flare's real struct, not a Casid shape.
+const paymentProofAbiParam = {
+  type: "tuple",
+  components: [
+    { name: "merkleProof", type: "bytes32[]" },
+    {
+      name: "data",
+      type: "tuple",
+      components: [
+        { name: "attestationType", type: "bytes32" },
+        { name: "sourceId", type: "bytes32" },
+        { name: "votingRound", type: "uint64" },
+        { name: "lowestUsedTimestamp", type: "uint64" },
+        {
+          name: "requestBody",
+          type: "tuple",
+          components: [
+            { name: "transactionId", type: "bytes32" },
+            { name: "inUtxo", type: "uint256" },
+            { name: "utxo", type: "uint256" },
+          ],
+        },
+        {
+          name: "responseBody",
+          type: "tuple",
+          components: [
+            { name: "blockNumber", type: "uint64" },
+            { name: "blockTimestamp", type: "uint64" },
+            { name: "sourceAddressHash", type: "bytes32" },
+            { name: "sourceAddressesRoot", type: "bytes32" },
+            { name: "receivingAddressHash", type: "bytes32" },
+            { name: "intendedReceivingAddressHash", type: "bytes32" },
+            { name: "spentAmount", type: "int256" },
+            { name: "intendedSpentAmount", type: "int256" },
+            { name: "receivedAmount", type: "int256" },
+            { name: "intendedReceivedAmount", type: "int256" },
+            { name: "standardPaymentReference", type: "bytes32" },
+            { name: "oneToOne", type: "bool" },
+            { name: "status", type: "uint8" },
+          ],
+        },
+      ],
+    },
+  ],
+} as const;
+
+function toBigInt(v: unknown, field: string): bigint {
+  if (typeof v === "bigint") return v;
+  if (typeof v === "number") return BigInt(Math.trunc(v));
+  if (typeof v === "string" && v.length > 0) return BigInt(v);
+  throw new Error(`Payment proof field "${field}" is not a valid integer: ${JSON.stringify(v)}`);
+}
+
+function toHex32(v: unknown, field: string): Hex {
+  if (typeof v !== "string" || v.length === 0) {
+    throw new Error(`Payment proof field "${field}" is not a hex string: ${JSON.stringify(v)}`);
+  }
+  const hex = v.startsWith("0x") ? v.slice(2) : v;
+  return `0x${hex.padStart(64, "0")}` as Hex;
+}
+
+function toBool(v: unknown): boolean {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") return v.toLowerCase() === "true";
+  return Boolean(v);
+}
+
+/**
+ * ABI-encodes the DA Layer's { response, proof } into the exact
+ * IPayment.Proof struct ProofVerifier.sol now abi.decode's on-chain. The DA
+ * Layer's `response` field names follow Flare's own struct field names
+ * (their documented convention across FDC tooling); values may arrive as
+ * strings (common for uint64/uint256/int256 in JSON APIs to avoid precision
+ * loss), so every numeric/hex field is converted defensively rather than
+ * assumed to already be the right JS type.
+ */
+export function encodePaymentProof(daProof: {
+  response: Record<string, unknown>;
+  proof: string[];
+}): Hex {
+  const r = daProof.response;
+  const requestBody = (r.requestBody ?? {}) as Record<string, unknown>;
+  const responseBody = (r.responseBody ?? {}) as Record<string, unknown>;
+
+  return encodeAbiParameters(
+    [paymentProofAbiParam],
+    [
+      {
+        merkleProof: daProof.proof.map((p) => toHex32(p, "merkleProof[]")),
+        data: {
+          attestationType: toHex32(r.attestationType, "attestationType"),
+          sourceId: toHex32(r.sourceId, "sourceId"),
+          votingRound: toBigInt(r.votingRound, "votingRound"),
+          lowestUsedTimestamp: toBigInt(r.lowestUsedTimestamp, "lowestUsedTimestamp"),
+          requestBody: {
+            transactionId: toHex32(requestBody.transactionId, "requestBody.transactionId"),
+            inUtxo: toBigInt(requestBody.inUtxo ?? "0", "requestBody.inUtxo"),
+            utxo: toBigInt(requestBody.utxo ?? "0", "requestBody.utxo"),
+          },
+          responseBody: {
+            blockNumber: toBigInt(responseBody.blockNumber, "responseBody.blockNumber"),
+            blockTimestamp: toBigInt(responseBody.blockTimestamp, "responseBody.blockTimestamp"),
+            sourceAddressHash: toHex32(responseBody.sourceAddressHash, "responseBody.sourceAddressHash"),
+            sourceAddressesRoot: toHex32(responseBody.sourceAddressesRoot, "responseBody.sourceAddressesRoot"),
+            receivingAddressHash: toHex32(responseBody.receivingAddressHash, "responseBody.receivingAddressHash"),
+            intendedReceivingAddressHash: toHex32(
+              responseBody.intendedReceivingAddressHash,
+              "responseBody.intendedReceivingAddressHash",
+            ),
+            spentAmount: toBigInt(responseBody.spentAmount, "responseBody.spentAmount"),
+            intendedSpentAmount: toBigInt(responseBody.intendedSpentAmount, "responseBody.intendedSpentAmount"),
+            receivedAmount: toBigInt(responseBody.receivedAmount, "responseBody.receivedAmount"),
+            intendedReceivedAmount: toBigInt(
+              responseBody.intendedReceivedAmount,
+              "responseBody.intendedReceivedAmount",
+            ),
+            standardPaymentReference: toHex32(
+              responseBody.standardPaymentReference,
+              "responseBody.standardPaymentReference",
+            ),
+            oneToOne: toBool(responseBody.oneToOne),
+            status: Number(responseBody.status ?? 0),
+          },
+        },
+      },
+    ],
+  );
+}
 
 const triggerExecutorAbi = [
   {

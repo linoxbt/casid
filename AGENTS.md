@@ -30,7 +30,7 @@ bun run dev:web           # :3100
 - Persistence: `bun:sqlite` in `apps/coordinator/src/lib/db.ts`, path resolved relative to the package root (`DATABASE_PATH` overrides)
 - Flare registry: resolves FtsoV2 / FdcHub / FdcVerification / Relay on Coston2
 - FDC: live prepare/submit/DA-proof flow lives in `services/fdcLive.ts`; called directly from `index.ts` routes (`/v1/attest/payment`, `/v1/attest/ftso`, `/v1/fdc/*`) — there is no `FDC_MODE` env switch
-- On-chain proof verification: gated by `ProofVerifier.mockMode` (owner-toggleable on-chain flag, not an env var). As of 2026-08-11 the Coston2 deployment runs with `mockMode=false`, wired to the real `FdcVerification`/`FtsoV2` contracts (flipped via `contracts/script/SetLive.s.sol` — see `STATUS.md`/`deployments/coston2.json` for tx hashes). `MockFdcVerification`/`MockFtsoV2` remain deployed but are no longer referenced by `ProofVerifier`/`TriggerExecutor`.
+- On-chain proof verification: gated by `ProofVerifier.mockMode` (owner-toggleable on-chain flag, not an env var). `mockMode=false` since 2026-08-11. As of 2026-08-13, `ProofVerifier`/`TriggerExecutor` were also redeployed (`contracts/script/RedeployFixed.s.sol`) to fix a real bug: `IFdcVerification.verifyPayment` took raw `bytes`, but the real Flare `FdcVerification` contract's actual ABI takes a typed `IPayment.Proof` struct — see `contracts/src/interfaces/IPayment.sol` and `STATUS.md`/`deployments/coston2.json` for the fix and tx hashes. `MockFdcVerification`/`MockFtsoV2` remain deployed but aren't referenced by the current `ProofVerifier`/`TriggerExecutor`.
 - On-chain fire: `services/chain.ts` when `TRIGGER_EXECUTOR_ADDRESS` + `DEPLOYER_PRIVATE_KEY`
 - Composition: `services/composition.ts` AND/OR over recent events
 

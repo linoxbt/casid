@@ -120,8 +120,7 @@ export default function CreateGatePage() {
                 </div>
               )}
               <p className="muted" style={{ fontSize: "0.8rem", margin: 0 }}>
-                The unlock content only ever lives in the link itself — nothing is stored on a
-                server until someone actually pays.
+                Nothing is stored until someone pays.
               </p>
             </div>
           </div>

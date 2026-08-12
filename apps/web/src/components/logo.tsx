@@ -1,13 +1,13 @@
 import { useId } from "react";
 
 /**
- * Casid mark: a flat-top hexagon (network / ledger node) with a checkmark
- * cut out of it as negative space (verified). Built from plain geometry
- * (hexagon path + one stroked checkmark path inside an SVG mask) rather
- * than a letterform, so it stays legible from favicon size up.
+ * Casid mark: a padlock (shackle + body) with a checkmark cut out of the
+ * body as negative space — "unlock, verified" as one glyph. Built from
+ * plain geometry (arc + rounded rect + one stroked checkmark path in an SVG
+ * mask), the same reliable technique as before, different shape family.
  */
 export function LogoMark({ size = 28, className = "" }: { size?: number; className?: string }) {
-  const id = `casid-mark-${useId()}`;
+  const id = `casid-lock-${useId()}`;
   return (
     <svg
       width={size}
@@ -18,22 +18,25 @@ export function LogoMark({ size = 28, className = "" }: { size?: number; classNa
       className={className}
       aria-hidden="true"
     >
+      <path
+        d="M15 21 V16 A9 9 0 0 1 33 16 V21"
+        stroke="var(--accent)"
+        strokeWidth="5"
+        strokeLinecap="round"
+        fill="none"
+      />
       <mask id={id} maskUnits="userSpaceOnUse">
         <rect width="48" height="48" fill="#fff" />
         <path
-          d="M13 24 L20.5 31 L36 12"
+          d="M16 30.5 L22 36.5 L34 21.5"
           stroke="#000"
-          strokeWidth="6.5"
+          strokeWidth="5"
           strokeLinecap="round"
           strokeLinejoin="round"
           fill="none"
         />
       </mask>
-      <path
-        d="M44 24 34 41.28 14 41.28 4 24 14 6.72 34 6.72Z"
-        fill="var(--accent)"
-        mask={`url(#${id})`}
-      />
+      <rect x="8" y="19" width="32" height="23" rx="6" fill="var(--accent)" mask={`url(#${id})`} />
     </svg>
   );
 }

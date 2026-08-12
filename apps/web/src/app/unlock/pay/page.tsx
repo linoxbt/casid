@@ -17,6 +17,7 @@ function PayFlow() {
   const [err, setErr] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
+  const [onChainTx, setOnChainTx] = useState<string | null>(null);
 
   async function verify() {
     setErr(null);
@@ -30,11 +31,15 @@ function PayFlow() {
       const res = await api.attestPayment({
         topicUri: `topic://payment/${chain}/${dest}`,
         txHash: txHash.trim(),
+        fireOnChain: true,
       });
       if (res.status === "pending_proof") {
         setPending(true);
       } else if (res.event) {
         setUnlocked(true);
+        if (res.onChain?.mode === "live" && res.onChain.txHash) {
+          setOnChainTx(res.onChain.txHash);
+        }
       }
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -53,6 +58,17 @@ function PayFlow() {
         <span className="pill success">Verified by Flare</span>
         <h2 style={{ marginTop: "0.75rem" }}>Unlocked</h2>
         <p style={{ whiteSpace: "pre-wrap", color: "var(--ink)", lineHeight: 1.6 }}>{secret}</p>
+        {onChainTx && (
+          <a
+            className="proof-link mono"
+            style={{ display: "inline-block", marginTop: "0.75rem", fontSize: "0.78rem" }}
+            href={`https://coston2-explorer.flare.network/tx/${onChainTx}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View on-chain trigger →
+          </a>
+        )}
       </div>
     );
   }

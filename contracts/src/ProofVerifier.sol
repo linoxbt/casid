@@ -2,6 +2,7 @@
 pragma solidity ^0.8.25;
 
 import {IFdcVerification} from "./interfaces/IFdcVerification.sol";
+import {IPayment} from "./interfaces/IPayment.sol";
 import {TopicLib} from "./libraries/TopicLib.sol";
 
 /// @title ProofVerifier
@@ -27,6 +28,7 @@ contract ProofVerifier {
     error ProofAlreadyUsed();
     error ProofInvalid();
     error ZeroAddress();
+    error UnsupportedAttestationType();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -118,6 +120,12 @@ contract ProofVerifier {
         return (_verifyWithFdc(attestationType, proof), false);
     }
 
+    /// @dev `proof` is opaque ABI-encoded bytes at this layer (kept generic so
+    /// TriggerExecutor's call site doesn't need to know per-type shapes). For
+    /// PAYMENT it must be `abi.encode` of an IPayment.Proof struct, matching
+    /// the real FdcVerification contract's typed interface. Other attestation
+    /// types aren't wired to real on-chain verification yet — they fail
+    /// loudly here instead of silently calling the wrong function.
     function _verifyWithFdc(bytes32 attestationType, bytes calldata proof)
         internal
         view
@@ -126,14 +134,10 @@ contract ProofVerifier {
         if (address(fdcVerification) == address(0)) return false;
 
         if (attestationType == TopicLib.KIND_PAYMENT) {
-            return fdcVerification.verifyPayment(proof);
+            IPayment.Proof memory paymentProof = abi.decode(proof, (IPayment.Proof));
+            return fdcVerification.verifyPayment(paymentProof);
         }
-        if (attestationType == TopicLib.KIND_EVM_TX) {
-            return fdcVerification.verifyEVMTransaction(proof);
-        }
-        if (attestationType == TopicLib.KIND_WEB2_JSON) {
-            return fdcVerification.verifyWeb2Json(proof);
-        }
-        return fdcVerification.verifyAttestation(attestationType, proof);
+
+        revert UnsupportedAttestationType();
     }
 }

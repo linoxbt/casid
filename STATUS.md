@@ -27,22 +27,45 @@ bash scripts/verify-coston2.sh
 - Voting round 1402793
 - DA Layer proof ready after ~80s
 
-## On-chain verification: LIVE ✅ (2026-08-11)
+## On-chain verification: LIVE ✅ (2026-08-13, corrected)
 
-`ProofVerifier.mockMode` has been flipped to `false`. On-chain proof
-consumption now verifies real FDC Merkle proofs via the real
-`FdcVerification` contract, and `TriggerExecutor.fireFtsoThreshold` reads the
-real `FtsoV2` feed — both legs of "Live FDC E2E" are now genuinely live, not
-just the off-chain prepare/DA-proof pipeline above. Flipped via
-`contracts/script/SetLive.s.sol` using the original deployer/owner key:
+**2026-08-11:** `ProofVerifier.mockMode` was flipped to `false` via
+`contracts/script/SetLive.s.sol`, pointing at the real `FdcVerification` and
+`FtsoV2` contracts.
 
-- `ProofVerifier.setFdcVerification(0x906507E0…)`: [`0x5c599aad…`](https://coston2-explorer.flare.network/tx/0x5c599aad36e6b34dc1f0215e56c67085ca59a228650b05eb4c7a9cbb7c45a9ad)
-- `ProofVerifier.setMockMode(false)`: [`0x07cba15a…`](https://coston2-explorer.flare.network/tx/0x07cba15af31b000600f15f33553c115ad2f818af50e29901857e697d6157f45a)
-- `TriggerExecutor.setFtsoV2(0xC4e9c78E…)`: [`0x6402c192…`](https://coston2-explorer.flare.network/tx/0x6402c192137929a07c3698e1085cdb7bfe978bc49a740c997c809190031ba327)
+**2026-08-13:** that flip alone wasn't sufficient — found and fixed a deeper
+bug. `ProofVerifier`'s `IFdcVerification.verifyPayment` took raw `bytes`, but
+the real deployed `FdcVerification` contract's actual ABI (confirmed against
+its Blockscout-verified implementation,
+[`0x6E33205…`](https://coston2-explorer.flare.network/address/0x6E33205293aE1C6dcC91249951A5A67C863918A7))
+takes a typed `IPayment.Proof` struct. Any real on-chain proof consumption
+would have reverted (wrong function selector) — invisible the whole time
+mock mode was on, since mock mode never actually called the real verifier.
 
-Full detail in `deployments/coston2.json`'s `onChainVerification` block.
-Verify anytime with `cast call <ProofVerifier> "mockMode()(bool)" --rpc-url coston2` (expect `false`), or via the coordinator's
-`GET /health` (`onChainVerification: "live"`).
+Fixed by redeploying `ProofVerifier` + `TriggerExecutor`
+(`contracts/script/RedeployFixed.s.sol` — narrower than a full redeploy;
+`TopicRegistry`/`SubscriptionHub`/`FtsoV2` are unaffected and reused as-is):
+
+- New `ProofVerifier`: [`0x3f800eeE…`](https://coston2-explorer.flare.network/address/0x3f800eeE8f1b4e0c6FCD90ce70BC3aB581151Ffc) — `mockMode=false`, source-verified
+- New `TriggerExecutor`: [`0x5062239…`](https://coston2-explorer.flare.network/address/0x50622392654467D6ebb544A74215B655e812C9Fd) — source-verified
+- Superseded (do not use): old `ProofVerifier` `0x787c170a…`, old `TriggerExecutor` `0x29e1f570…`
+
+Verified two ways:
+1. Two new Foundry tests (`test_realVerificationDecodesPaymentProof`,
+   `test_realVerificationRejectsUnsupportedType`) exercise the real,
+   non-mock decode-and-verify path end-to-end against a constructed
+   `IPayment.Proof`, not just mock mode.
+2. Fresh `cast call` reads against the new contracts confirm `mockMode=false`,
+   correct `fdcVerification`/`ftsoV2` wiring, and correct `consumer`.
+
+Full detail in `deployments/coston2.json`'s `proofStructFix` block.
+
+**Known remaining gap:** the coordinator's proof-construction code
+(`apps/coordinator/src/services/chain.ts`) needs to ABI-encode the DA Layer's
+real response into `IPayment.Proof` before firing on-chain — that's the
+other half of this fix (see the coordinator's own commit for status). The
+off-chain FDC verification that actually gates Unlock's reveal is unaffected
+by any of this and has been real throughout.
 
 ## Next (optional)
 1. Push GitHub public repo

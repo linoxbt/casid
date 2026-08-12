@@ -79,11 +79,7 @@ export default function VerifyPage() {
     <>
       <section className="hero">
         <h1>Verify</h1>
-        <p>
-          Submit real proof material to turn a registered topic into a verified event: an FDC
-          Payment transaction id, a live FTSO threshold check, a composition evaluation, or a
-          standalone address-validity attestation.
-        </p>
+        <p>Submit real proof material and get a verified event back.</p>
       </section>
 
       {err && <div className="alert error">{err}</div>}
@@ -221,8 +217,7 @@ function FtsoCard({ topics, onSettled }: { topics: Topic[]; onSettled: () => voi
           {busy ? "Checking…" : "Read live price & verify"}
         </button>
         <p className="muted" style={{ margin: 0, fontSize: "0.82rem" }}>
-          Reads the live FTSOv2 feed. Fails with an error if the price hasn&apos;t crossed the
-          topic&apos;s threshold yet — that&apos;s expected, not a bug.
+          Errors if the price hasn&apos;t crossed yet — expected, not a bug.
         </p>
         {msg && <div className="alert success">{msg}</div>}
         {err && <div className="alert error">{err}</div>}
@@ -322,8 +317,7 @@ function AddressValidityCard() {
           {busy ? "Checking…" : "Prepare AddressValidity"}
         </button>
         <p className="muted" style={{ margin: 0, fontSize: "0.82rem" }}>
-          Calls Flare&apos;s real testnet FDC verifier to prepare (not submit) an AddressValidity
-          request — no gas required.
+          Real testnet verifier call. No gas.
         </p>
         {msg && <div className="alert success">{msg}</div>}
         {err && <div className="alert error">{err}</div>}

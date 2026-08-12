@@ -73,10 +73,7 @@ export default function TopicsPage() {
     <>
       <section className="hero">
         <h1>Topics</h1>
-        <p>
-          Topics are the contract between your application and Casid. Create a payment topic for the
-          exact destination you watch, or use price topics for live FTSO thresholds.
-        </p>
+        <p>The contract between your app and Casid — a payment address or a price threshold.</p>
       </section>
 
       {msg && <div className="alert success">{msg}</div>}
@@ -91,11 +88,8 @@ export default function TopicsPage() {
               <input value={uri} onChange={(e) => setUri(e.target.value)} />
             </label>
             <p className="muted" style={{ margin: 0, fontSize: "0.82rem" }}>
-              Payment topics are not preloaded because the destination address belongs to your system. Examples:{" "}
-              <code className="mono">topic://payment/xrp/{"{addr}"}</code>,{" "}
-              <code className="mono">
-                topic://ftso/price/XRP-USD/threshold/gte/0.50
-              </code>
+              <code className="mono">topic://payment/xrp/{"{addr}"}</code> or{" "}
+              <code className="mono">topic://ftso/price/XRP-USD/threshold/gte/0.50</code>
             </p>
             <button className="btn btn-primary" onClick={createTopic}>
               Create topic

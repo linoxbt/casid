@@ -35,10 +35,7 @@ export default function EventsPage() {
     <>
       <section className="hero">
         <h1>Event ledger</h1>
-        <p>
-          Each row is a verified economic fact recorded by the coordinator. Use this page to inspect
-          payloads, commitments, delivery attempts, and explorer links when an on-chain transaction is present.
-        </p>
+        <p>Every verified fact, with its proof and delivery status.</p>
       </section>
 
       {err && <div className="alert error">{err}</div>}

@@ -87,16 +87,26 @@ Greenfield for Summer Signal:
 | Contract | Address | Explorer |
 |----------|---------|----------|
 | **TopicRegistry** | `0xe132a226382E3A872d558c8c576f0aaeF864bE7C` | [view](https://coston2-explorer.flare.network/address/0xe132a226382E3A872d558c8c576f0aaeF864bE7C) |
-| **ProofVerifier** | `0x787c170ad57D650D2BeE947A25c22F677B22bd87` | [view](https://coston2-explorer.flare.network/address/0x787c170ad57D650D2BeE947A25c22F677B22bd87) |
+| **ProofVerifier** | `0x3f800eeE8f1b4e0c6FCD90ce70BC3aB581151Ffc` | [view](https://coston2-explorer.flare.network/address/0x3f800eeE8f1b4e0c6FCD90ce70BC3aB581151Ffc) |
 | **SubscriptionHub** | `0xAd5dD33d2F753891A18A970361C81a87c401f31d` | [view](https://coston2-explorer.flare.network/address/0xAd5dD33d2F753891A18A970361C81a87c401f31d) |
-| **TriggerExecutor** | `0x29e1f57044ce6C22Db362222e4a66da78F5acd3e` | [view](https://coston2-explorer.flare.network/address/0x29e1f57044ce6C22Db362222e4a66da78F5acd3e) |
+| **TriggerExecutor** | `0x50622392654467D6ebb544A74215B655e812C9Fd` | [view](https://coston2-explorer.flare.network/address/0x50622392654467D6ebb544A74215B655e812C9Fd) |
 | MockFdcVerification | `0xc9442a9542e4A931bc2bA207b31B98EA57C4a53B` | — |
 | MockFtsoV2 | `0xFBAD05CFcF1329fBCe5B9d95e618Ebe5A6d23853` | — |
+
+`ProofVerifier`/`TriggerExecutor` were redeployed on 2026-08-13 to fix a real
+bug: the original `IFdcVerification.verifyPayment` took raw `bytes`, but the
+real Flare `FdcVerification` contract's actual ABI takes a typed
+`IPayment.Proof` struct — on-chain proof consumption would have reverted.
+`ProofVerifier` now `abi.decode`s the proof into the correct struct before
+calling the real verifier (`contracts/src/ProofVerifier.sol`), covered by two
+new Foundry tests exercising the real, non-mock verification path.
+`TopicRegistry`/`SubscriptionHub` are unaffected and unchanged. Superseded
+addresses: `ProofVerifier` `0x787c170a…`, `TriggerExecutor` `0x29e1f570…`.
 
 **Deployer:** `0x367d3177F6dDe0B759F39Ba1430a4c14E98d2476`  
 **Historical `fireWithProof` tx:** [`0xa975da7f…4614de2f`](https://coston2-explorer.flare.network/tx/0xa975da7f94beb030dae88c847768bceb78d73e5bd1075ac80b3c97e74614de2f)  
 **Live FDC `requestAttestation`:** [`0xdcc4fb6e…a3e5e098`](https://coston2-explorer.flare.network/tx/0xdcc4fb6e9d23b6075c4514c17cdb2407388c7ddb799a81d083a705dea3e5e098) (AddressValidity → FdcHub, voting round **1402793**, **DA proof retrieved**)  
-**Source verification:** ✅ All 6 contracts verified on Coston2 explorer (solc 0.8.25, optimizer 200)
+**Source verification:** ✅ All contracts verified on Coston2 explorer (solc 0.8.25, optimizer 200)
 
 Full map: `deployments/coston2.json`
 

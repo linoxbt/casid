@@ -67,10 +67,7 @@ export default function DashboardPage() {
         <div>
           <p className="eyebrow">Verified economic event fabric</p>
           <h1>Operations console</h1>
-          <p>
-            Create a topic, submit a proof, or inspect the ledger. The detailed flows live in the sidebar sections;
-            this page stays focused on live status and the next action.
-          </p>
+          <p>Live status and your next action.</p>
         </div>
 
         <div className="status-panel">

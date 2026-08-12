@@ -23,6 +23,7 @@ import {
 } from "./services/attestation";
 import { deliverToSubscribers } from "./services/delivery";
 import {
+  encodePaymentProof,
   fireEventOnChain,
   registerSubscriptionOnChain,
   registerTopicOnChain,
@@ -344,9 +345,18 @@ app.post("/v1/attest/payment", async (c) => {
 
     let onChain = null;
     if (body.fireOnChain) {
-      onChain = await fireEventOnChain(flare, event, {
-        proofHex: (`0x${Buffer.from(JSON.stringify(live.proof)).toString("hex")}`) as `0x${string}`,
-      });
+      try {
+        const proofHex = encodePaymentProof({
+          response: live.proof!.response!,
+          proof: live.proof!.proof!,
+        });
+        onChain = await fireEventOnChain(flare, event, { proofHex });
+      } catch (encodeErr) {
+        onChain = {
+          ok: false,
+          error: `Proof encoding failed: ${encodeErr instanceof Error ? encodeErr.message : String(encodeErr)}`,
+        };
+      }
     } else {
       onChain = await fireEventOnChain(flare, event);
     }

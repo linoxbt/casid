@@ -9,6 +9,7 @@ import {TriggerExecutor} from "../src/TriggerExecutor.sol";
 import {MockFdcVerification} from "../src/mocks/MockFdcVerification.sol";
 import {MockFtsoV2} from "../src/mocks/MockFtsoV2.sol";
 import {TopicLib} from "../src/libraries/TopicLib.sol";
+import {IPayment} from "../src/interfaces/IPayment.sol";
 
 contract CasidTest is Test {
     TopicRegistry registry;
@@ -141,6 +142,85 @@ contract CasidTest is Test {
         );
         assertEq(registry.getCompositionChildren(comp).length, 2);
         assertTrue(registry.isActive(comp));
+    }
+
+    /// @notice Regression test for the real (non-mock) verification path: a
+    /// ProofVerifier constructed with mockMode=false must abi.decode the
+    /// opaque proof bytes into IPayment.Proof and call the typed verifier —
+    /// this is the exact path that silently called the wrong function
+    /// selector against the real Flare FdcVerification contract before the
+    /// fix (mockMode was the only thing that ever hid it).
+    function test_realVerificationDecodesPaymentProof() public {
+        MockFdcVerification realFdc = new MockFdcVerification();
+        ProofVerifier realVerifier = new ProofVerifier(address(realFdc), false);
+        TriggerExecutor realExecutor = new TriggerExecutor(
+            address(realVerifier), address(registry), address(hub), address(ftso)
+        );
+        realVerifier.setConsumer(address(realExecutor));
+
+        bytes32 schema = TopicLib.paymentSchemaHash(keccak256("XRPL"), keccak256("rReal"));
+        uint256 topicId =
+            registry.createTopic(TopicLib.KIND_PAYMENT, schema, "topic://payment/xrp/rReal");
+
+        bytes32[] memory merkleProof = new bytes32[](1);
+        merkleProof[0] = keccak256("leaf");
+
+        IPayment.Proof memory proof = IPayment.Proof({
+            merkleProof: merkleProof,
+            data: IPayment.Response({
+                attestationType: TopicLib.KIND_PAYMENT,
+                sourceId: keccak256("testXRP"),
+                votingRound: 1,
+                lowestUsedTimestamp: 1,
+                requestBody: IPayment.RequestBody({transactionId: keccak256("tx"), inUtxo: 0, utxo: 0}),
+                responseBody: IPayment.ResponseBody({
+                    blockNumber: 1,
+                    blockTimestamp: 1,
+                    sourceAddressHash: keccak256("src"),
+                    sourceAddressesRoot: keccak256("root"),
+                    receivingAddressHash: keccak256("rReal"),
+                    intendedReceivingAddressHash: keccak256("rReal"),
+                    spentAmount: 1_000_000,
+                    intendedSpentAmount: 1_000_000,
+                    receivedAmount: 1_000_000,
+                    intendedReceivedAmount: 1_000_000,
+                    standardPaymentReference: bytes32(0),
+                    oneToOne: true,
+                    status: 0
+                })
+            })
+        });
+
+        realExecutor.fireWithProof(
+            topicId,
+            0,
+            TopicLib.KIND_PAYMENT,
+            abi.encode(proof),
+            keccak256("real-proof-hash"),
+            keccak256("real-event"),
+            ""
+        );
+        assertTrue(realVerifier.usedProofs(keccak256("real-proof-hash")));
+    }
+
+    /// @notice Non-Payment attestation types must fail loudly (not silently
+    /// call a wrong function) in real (non-mock) mode until they're wired.
+    function test_realVerificationRejectsUnsupportedType() public {
+        MockFdcVerification realFdc = new MockFdcVerification();
+        ProofVerifier realVerifier = new ProofVerifier(address(realFdc), false);
+        TriggerExecutor realExecutor = new TriggerExecutor(
+            address(realVerifier), address(registry), address(hub), address(ftso)
+        );
+        realVerifier.setConsumer(address(realExecutor));
+
+        bytes32 schema = TopicLib.paymentSchemaHash(keccak256("XRPL"), keccak256("rOther"));
+        uint256 topicId =
+            registry.createTopic(TopicLib.KIND_PAYMENT, schema, "topic://payment/xrp/rOther");
+
+        vm.expectRevert(ProofVerifier.UnsupportedAttestationType.selector);
+        realExecutor.fireWithProof(
+            topicId, 0, TopicLib.KIND_WEB2_JSON, abi.encode("x"), keccak256("h"), keccak256("e"), ""
+        );
     }
 
     function test_tipUnlockDemo() public {

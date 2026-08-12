@@ -27,38 +27,25 @@ export default function DocsPage() {
     <>
       <section className="hero">
         <h1>Docs</h1>
-        <p>
-          Casid is the verified economic event fabric for Flare. These docs explain
-          the topic model, proof flow, delivery contract, and operating assumptions.
-        </p>
+        <p>The topic model, proof flow, and contracts, briefly.</p>
       </section>
 
       <div className="card">
-        <h2>On-chain proof verification status</h2>
+        <h2>On-chain verification status</h2>
         <p className="muted" style={{ lineHeight: 1.6, margin: "0.4rem 0 0" }}>
           {onChainVerification === "live" && (
             <>
-              <span className="pill success">live</span> The deployed{" "}
-              <code className="mono">ProofVerifier</code> is verifying real FDC
-              Merkle proofs on-chain.
+              <span className="pill success">live</span> Real FDC Merkle proofs, verified on-chain.
             </>
           )}
           {onChainVerification === "mock" && (
             <>
-              <span className="pill">mock</span> The deployed{" "}
-              <code className="mono">ProofVerifier</code> currently runs in{" "}
-              <code className="mono">mockMode</code>: it accepts any non-empty
-              proof rather than cryptographically verifying it. The off-chain
-              FDC prepare/DA-proof pipeline above is genuinely live against
-              Flare testnet infrastructure; only the final on-chain consumption
-              step is not yet enforced.
+              <span className="pill">mock</span> Accepts any non-empty proof — not yet cryptographic.
             </>
           )}
           {(onChainVerification === "unknown" || onChainVerification === "checking") && (
             <>
-              <span className="pill">unknown</span> Could not determine the
-              on-chain verifier mode (coordinator offline or{" "}
-              <code className="mono">PROOF_VERIFIER_ADDRESS</code> not configured).
+              <span className="pill">unknown</span> Coordinator offline or not configured.
             </>
           )}
         </p>
@@ -67,27 +54,12 @@ export default function DocsPage() {
       <div className="grid cols-2">
         <div className="card">
           <h2>Why Casid exists</h2>
-          <p className="muted" style={{ lineHeight: 1.6, margin: 0 }}>
-            Blockchains only know their own state. Real economic activity happens
-            as XRP/BTC/DOGE payments, FTSO prices, Web2 API facts, and FAsset
-            lifecycle events. Casid makes those facts{" "}
-            <strong style={{ color: "var(--text)" }}>
-              typed topics with proof-gated subscriptions
-            </strong>
-            .
-          </p>
+          <p className="muted" style={{ margin: 0 }}>Proof-gated topics, not raw indexer claims.</p>
         </div>
         <div className="card">
-          <h2>New primitive</h2>
-          <p className="muted" style={{ lineHeight: 1.6, margin: 0 }}>
-            <code className="mono">Attested Topics</code> — durable schemas such
-            as{" "}
-            <code className="mono">
-              topic://payment/xrp/{"{dest}"}
-            </code>{" "}
-            and compositions{" "}
-            <code className="mono">AND(payment, ftso≥x)</code>. Consumers never
-            fire without FDC/FTSO verification.
+          <h2>The primitive</h2>
+          <p className="muted" style={{ margin: 0 }}>
+            <code className="mono">Attested Topics</code> — durable, typed, composable.
           </p>
         </div>
       </div>
@@ -147,35 +119,23 @@ export default function DocsPage() {
         </table>
       </div>
 
-      <h2 className="section-title">Flare integration (non-substitutable)</h2>
+      <h2 className="section-title">Flare integration</h2>
       <div className="list">
         <div className="list-item">
           <strong>FDC Payment</strong>
-          <p className="muted" style={{ margin: "0.4rem 0 0" }}>
-            Core leaf topic for XRP/BTC/DOGE. Merkle proofs via DA Layer; Casid
-            never trusts raw indexer claims.
-          </p>
+          <p className="muted" style={{ margin: "0.4rem 0 0" }}>XRP/BTC/DOGE, Merkle-proven via the DA Layer.</p>
         </div>
         <div className="list-item">
           <strong>FTSOv2</strong>
-          <p className="muted" style={{ margin: "0.4rem 0 0" }}>
-            Price-threshold topics with enshrined feeds — composition with
-            payments for capital-market style conditions.
-          </p>
+          <p className="muted" style={{ margin: "0.4rem 0 0" }}>Live price thresholds, composable with payments.</p>
         </div>
         <div className="list-item">
           <strong>FAssets</strong>
-          <p className="muted" style={{ margin: "0.4rem 0 0" }}>
-            Lifecycle topics (mint/redeem) and settlement asset for paid
-            subscriptions.
-          </p>
+          <p className="muted" style={{ margin: "0.4rem 0 0" }}>Lifecycle topics for mint/redeem.</p>
         </div>
         <div className="list-item">
           <strong>FCC (roadmap)</strong>
-          <p className="muted" style={{ margin: "0.4rem 0 0" }}>
-            Confidential topic filters and private destinations inside TEEs
-            without leaking watch addresses on-chain.
-          </p>
+          <p className="muted" style={{ margin: "0.4rem 0 0" }}>Confidential topic filters — not yet built.</p>
         </div>
       </div>
 
