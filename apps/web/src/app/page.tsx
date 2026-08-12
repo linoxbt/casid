@@ -37,15 +37,15 @@ export default function LandingPage() {
       <main>
         <div className="page-frame">
           <section className="hero-grid">
-            <p className="eyebrow">Flare-native · FDC + FTSO</p>
-            <h1>The verified event layer for Flare.</h1>
+            <p className="eyebrow">Flare-native · FDC verified</p>
+            <h1>Get paid, unlock instantly.</h1>
             <p className="hero-copy">
-              Proof-gated payments, price thresholds, and webhooks for protocols and backends that
-              need more than raw indexer data.
+              Share a link. The moment a real payment arrives — verified by Flare, not a claim —
+              it unlocks whatever you attached.
             </p>
             <div className="hero-actions">
-              <Link className="btn btn-primary" href="/app">Launch app</Link>
-              <Link className="btn btn-ghost" href="/app/docs">Read docs</Link>
+              <Link className="btn btn-primary" href="/unlock">Try Unlock</Link>
+              <Link className="btn btn-ghost" href="/app">Casid infrastructure →</Link>
             </div>
           </section>
         </div>
@@ -120,6 +120,7 @@ export default function LandingPage() {
           </div>
           <div className="footer-col">
             <h4>Product</h4>
+            <Link href="/unlock">Unlock</Link>
             <Link href="/app">Dashboard</Link>
             <Link href="/app/topics">Topics</Link>
             <Link href="/app/verify">Verify</Link>
