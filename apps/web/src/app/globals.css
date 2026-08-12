@@ -98,32 +98,7 @@ p { margin: 0; }
   margin: 0 auto;
 }
 
-.ticker {
-  overflow: hidden;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-}
-.ticker-track {
-  display: flex;
-  width: max-content;
-  gap: 2.5rem;
-  padding: 0.55rem 1rem;
-  white-space: nowrap;
-  animation: slide 26s linear infinite;
-}
-.ticker-track span {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--muted);
-}
-@keyframes slide {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-/* ---------- header (shared: landing + app) ---------- */
+/* ---------- header ---------- */
 
 .site-header {
   position: sticky;
@@ -147,32 +122,9 @@ p { margin: 0; }
 }
 
 .brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 800; font-family: var(--font-display); font-size: 1rem; flex-shrink: 0; }
-.brand-mark {
-  display: inline-grid;
-  place-items: center;
-  width: 1.9rem;
-  height: 1.9rem;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 0.9rem;
-}
-
-.site-nav { display: flex; align-items: center; gap: 0.15rem; flex: 1; }
-.site-nav-link {
-  padding: 0.5rem 0.7rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.86rem;
-  font-weight: 500;
-  color: var(--muted);
-  transition: color 0.15s ease, background-color 0.15s ease;
-}
-.site-nav-link:hover { color: var(--ink); background: var(--surface-2); }
-.site-nav-link.active { color: var(--ink); background: var(--surface-2); }
 
 .site-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+.site-actions-end { margin-left: auto; }
 .site-link { font-size: 0.86rem; color: var(--muted); font-weight: 500; padding: 0.5rem 0.6rem; }
 .site-link:hover { color: var(--ink); }
 
@@ -191,17 +143,78 @@ p { margin: 0; }
 }
 .theme-toggle:hover { color: var(--ink); border-color: var(--accent-border); }
 
-.mobile-menu-toggle { display: none; }
+/* ---------- app shell (collapsible sidebar) ---------- */
 
-.mobile-nav-panel {
-  display: none;
+.app-shell { display: flex; min-height: 100vh; }
+
+.app-sidebar {
+  width: 232px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.75rem 1.25rem 1rem;
-  border-bottom: 1px solid var(--line);
-  background: var(--bg);
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  padding: 1rem 0.75rem;
+  transition: width 0.16s ease;
 }
-.mobile-nav-panel .site-nav-link { text-align: left; }
+.app-shell.collapsed .app-sidebar { width: 68px; }
+
+.app-sidebar-head { padding: 0.4rem 0.5rem 1.25rem; }
+.app-sidebar-head .brand { font-size: 0.95rem; }
+.app-shell.collapsed .app-sidebar-brand-text { display: none; }
+
+.app-sidebar-nav { display: flex; flex-direction: column; gap: 0.15rem; flex: 1; }
+.app-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.app-sidebar-link svg { flex-shrink: 0; }
+.app-sidebar-link:hover { color: var(--ink); background: var(--surface-2); }
+.app-sidebar-link.active { color: var(--ink); background: var(--accent-subtle); }
+.app-shell.collapsed .app-sidebar-link { justify-content: center; padding: 0.6rem; }
+.app-shell.collapsed .app-sidebar-link span { display: none; }
+
+.app-sidebar-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.85rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--line);
+}
+.app-shell.collapsed .app-sidebar-foot { flex-direction: column; }
+.app-sidebar-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.app-sidebar-collapse:hover { color: var(--ink); border-color: var(--accent-border); }
+
+.app-sidebar-backdrop { display: none; }
+
+.app-content { flex: 1; min-width: 0; }
+
+.app-mobile-bar { display: none; }
+.app-mobile-toggle { padding: 0; width: 2.5rem; flex-shrink: 0; }
 
 /* ---------- buttons ---------- */
 
@@ -425,16 +438,32 @@ td { font-size: 0.86rem; }
 /* ---------- responsive ---------- */
 
 @media (max-width: 920px) {
-  .site-nav { display: none; }
-  .mobile-menu-toggle { display: inline-flex; }
-  .mobile-nav-panel { display: flex; }
   .hero-grid { padding: 3rem 0 2rem; }
   .step-grid, .surface-grid, .dashboard-grid, .dashboard-hero, .dashboard-lane { grid-template-columns: 1fr; }
   .footer-cols { grid-template-columns: 1fr 1fr; }
+
+  /* app shell becomes an off-canvas drawer */
+  .app-shell { display: block; }
+  .app-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 50;
+    width: 250px;
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
+  }
+  .app-sidebar.mobile-open { transform: translateX(0); }
+  .app-shell.collapsed .app-sidebar { width: 250px; }
+  .app-shell.collapsed .app-sidebar-link { justify-content: flex-start; padding: 0.55rem 0.6rem; }
+  .app-shell.collapsed .app-sidebar-link span { display: inline; }
+  .app-shell.collapsed .app-sidebar-brand-text { display: inline; }
+  .app-sidebar-collapse { display: none; }
+  .app-sidebar-backdrop { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 45; }
+  .app-mobile-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: var(--header-h); padding: 0 1.25rem; border-bottom: 1px solid var(--line); }
 }
 
 @media (max-width: 640px) {
-  .page-frame, .site-header-inner { width: min(100%, calc(100% - 1.5rem)); }
+  .page-frame { width: min(100%, calc(100% - 1.5rem)); }
   .status-panel, .status-grid { grid-template-columns: 1fr; }
   .card, .step-card, .surface-card, .panel, .list-item, .status-panel { padding: 1rem; }
   .footer-cols { grid-template-columns: 1fr; }

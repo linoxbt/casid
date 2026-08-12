@@ -1,10 +1,5 @@
-import { SiteHeader } from "@/components/site-header";
+import { AppShell } from "@/components/app-sidebar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="theme-shell">
-      <SiteHeader />
-      <div className="page-frame">{children}</div>
-    </div>
-  );
+  return <AppShell>{children}</AppShell>;
 }

@@ -1,13 +1,5 @@
 import Link from "next/link";
-import { SiteHeader } from "@/components/site-header";
-
-const ticker = [
-  "FDC payment proofs",
-  "FTSO threshold checks",
-  "HMAC delivery",
-  "On-chain trigger fire",
-  "Coston2 verification",
-];
+import { Logo } from "@/components/logo";
 
 const capabilities = [
   "FDC Payment Proofs",
@@ -18,29 +10,29 @@ const capabilities = [
 ];
 
 const features = [
-  ["Proof-gated", "Nothing fires until Flare's FDC or FTSO has verified it — not a raw indexer claim."],
-  ["Signed delivery", "Every event ships as an HMAC-signed webhook with retries and a durable ledger."],
-  ["On-chain triggers", "The same proof that signs your webhook can fire a Solidity trigger, gated on-chain."],
+  ["Proof-gated", "Verified by FDC or FTSO before anything fires."],
+  ["Signed delivery", "HMAC-signed webhooks, retried until delivered."],
+  ["On-chain triggers", "One proof, one gated Solidity trigger."],
 ];
 
 const steps = [
-  ["Create a topic", "Register a payment, price-threshold, or composition topic with a typed URI."],
-  ["Verify or subscribe", "Submit a real proof, or subscribe a webhook to watch a topic continuously."],
-  ["Get the verified event", "A signed, proof-backed record lands in your ledger and your endpoint."],
+  ["Create a topic", "Register a typed topic URI."],
+  ["Verify or subscribe", "Submit a proof, or watch continuously."],
+  ["Get the verified event", "A signed record lands in your ledger."],
 ];
 
 export default function LandingPage() {
   return (
     <div className="theme-shell">
-      <div className="ticker" aria-hidden="true">
-        <div className="ticker-track">
-          {[...ticker, ...ticker].map((item, index) => (
-            <span key={`${item}-${index}`}>{item}</span>
-          ))}
+      <header className="site-header">
+        <div className="site-header-inner">
+          <Logo />
+          <div className="site-actions site-actions-end">
+            <Link href="/app/docs" className="site-link">Docs</Link>
+            <Link href="/app" className="btn btn-primary">Launch app</Link>
+          </div>
         </div>
-      </div>
-
-      <SiteHeader />
+      </header>
 
       <main>
         <div className="page-frame">
@@ -72,7 +64,7 @@ export default function LandingPage() {
               <p>
                 <code className="mono">topic://payment/xrp/{"{destination}"}</code> and{" "}
                 <code className="mono">topic://ftso/price/{"{feed}"}/threshold/{"{op}"}/{"{value}"}</code>{" "}
-                — the same shape whether you&apos;re watching a wallet or a price feed.
+                — the same shape, whatever you&apos;re watching.
               </p>
             </div>
           </section>
@@ -121,10 +113,7 @@ export default function LandingPage() {
       <footer className="site-footer">
         <div className="page-frame footer-cols">
           <div className="footer-col">
-            <Link href="/" className="brand">
-              <span className="brand-mark">C</span>
-              Casid
-            </Link>
+            <Logo />
             <p className="muted" style={{ marginTop: "0.75rem", fontSize: "0.86rem", lineHeight: 1.55 }}>
               Verified economic event fabric for Flare.
             </p>
