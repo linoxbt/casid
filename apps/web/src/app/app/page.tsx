@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, type CasidEvent, type Delivery, type Topic } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
+import { api, type CasidEvent, type Delivery } from "@/lib/api";
+import { TopicsIcon, VerifyIcon, DocsIcon } from "@/components/app-sidebar";
 
 function short(value?: string | null, size = 10) {
   if (!value) return "-";
@@ -17,34 +18,25 @@ function explorerHref(event: CasidEvent) {
 }
 
 export default function DashboardPage() {
-  const [topics, setTopics] = useState<Topic[]>([]);
   const [events, setEvents] = useState<CasidEvent[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [health, setHealth] = useState("checking");
   const [network, setNetwork] = useState("resolving");
   const [eventsTotal, setEventsTotal] = useState(0);
-  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const paymentTopic = useMemo(() => topics.find((topic) => topic.kind === "PAYMENT")?.uri ?? "", [topics]);
-  const ftsoTopic = useMemo(() => topics.find((topic) => topic.kind === "FTSO_THRESHOLD")?.uri ?? "", [topics]);
   const delivered = deliveries.filter((d) => d.status === "delivered").length;
 
   const refresh = useCallback(async () => {
     try {
-      // Preview tables only need a handful of rows; the stat counts come
-      // from the coordinator's own totals rather than the length of the
-      // fetched preview slice.
-      const [h, t, e, d, m] = await Promise.all([
+      const [h, e, d, m] = await Promise.all([
         api.health(),
-        api.topics(),
         api.events(5),
         api.deliveries(),
         api.meta().catch(() => null),
       ]);
       setHealth(h.ok ? "online" : "degraded");
       setEventsTotal(h.events);
-      setTopics(t.topics);
       setEvents(e.events);
       setDeliveries(d.deliveries);
       setNetwork(m ? `${m.network.name ?? "flare"} / ${m.network.chainId}` : "offline");
@@ -61,57 +53,59 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, [refresh]);
 
+  const isOnline = health === "online";
+
   return (
     <div className="dashboard-home">
-      <section className="dashboard-hero">
+      <div className="page-header">
         <div>
-          <p className="eyebrow">Verified economic event fabric</p>
-          <h1>Operations console</h1>
-          <p>Live status and your next action.</p>
+          <p className="page-header-eyebrow">Overview</p>
+          <h1>Dashboard</h1>
         </div>
-
-        <div className="status-panel">
-          <div>
-            <strong>{health}</strong>
-            <span>coordinator</span>
-          </div>
-          <div>
-            <strong>{network}</strong>
-            <span>network</span>
-          </div>
-          <div>
-            <strong>{eventsTotal}</strong>
-            <span>verified events</span>
-          </div>
-          <div>
-            <strong>{delivered}</strong>
-            <span>delivered webhooks</span>
-          </div>
+        <div className="page-header-actions">
+          <span className={`status-badge ${isOnline ? "ok" : "down"}`}>
+            <span className={`status-dot ${isOnline ? "ok" : "down"}`} />
+            {health}
+          </span>
+          <Link className="btn btn-primary" href="/app/verify">Verify a payment</Link>
         </div>
-      </section>
+      </div>
 
-      {(notice || error) && <div className={`alert ${error ? "error" : "success"}`}>{error ?? notice}</div>}
+      {error && <div className="alert error">{error}</div>}
 
-      <section className="dashboard-grid">
-        <article className="surface-card">
-          <p className="surface-label">next step</p>
-          <h2>Open the topic workflow</h2>
-          <p>Create a payment topic or a live FTSO topic from the sidebar section.</p>
-          <Link className="site-link" href="/app/topics">Go to Topics</Link>
-        </article>
-        <article className="surface-card">
-          <p className="surface-label">current defaults</p>
-          <h2>Selected topics</h2>
-          <p className="mono">{paymentTopic || "No payment topic yet"}</p>
-          <p className="mono">{ftsoTopic || "No FTSO topic yet"}</p>
-        </article>
-        <article className="surface-card">
-          <p className="surface-label">docs</p>
-          <h2>Understand the flow</h2>
-          <p>Read how Casid wires proofs, webhooks, and on-chain triggers together.</p>
-          <Link className="site-link" href="/app/docs">Open docs</Link>
-        </article>
-      </section>
+      <div className="stat-row">
+        <div className="stat-card">
+          <span className="stat-card-label">Network</span>
+          <span className="stat-card-value" style={{ fontSize: "1.05rem" }}>{network}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-card-label">Verified events</span>
+          <span className="stat-card-value">{eventsTotal}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-card-label">Delivered webhooks</span>
+          <span className="stat-card-value">{delivered}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-card-label">Pending deliveries</span>
+          <span className="stat-card-value">{deliveries.length - delivered}</span>
+        </div>
+      </div>
+
+      <div className="quick-actions">
+        <Link className="action-tile" href="/app/topics">
+          <TopicsIcon />
+          New topic
+        </Link>
+        <Link className="action-tile" href="/app/verify">
+          <VerifyIcon />
+          Verify a proof
+        </Link>
+        <Link className="action-tile" href="/app/docs">
+          <DocsIcon />
+          Read the docs
+        </Link>
+      </div>
 
       <section className="dashboard-lane">
         <div className="panel">
@@ -119,36 +113,43 @@ export default function DashboardPage() {
             <span>Event ledger</span>
             <Link className="site-link" href="/app/events">View all</Link>
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Type</th>
-                <th>Proof</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((event) => (
-                <tr key={event.id}>
-                  <td className="muted">{new Date(event.createdAt).toLocaleTimeString()}</td>
-                  <td><span className="pill success">{event.attestationType}</span></td>
-                  <td className="mono">
-                    <a className="proof-link" href={explorerHref(event)} target="_blank" rel="noreferrer">
-                      {short(event.proofHash, 8)}
-                    </a>
-                  </td>
-                  <td>{event.verified ? "verified" : "pending"}</td>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Type</th>
+                  <th>Proof</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-              {events.length === 0 && <tr><td colSpan={4} className="muted">No proof-backed events recorded yet.</td></tr>}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {events.map((event) => (
+                  <tr key={event.id}>
+                    <td className="muted">{new Date(event.createdAt).toLocaleTimeString()}</td>
+                    <td><span className="pill success">{event.attestationType}</span></td>
+                    <td className="mono">
+                      <a className="proof-link" href={explorerHref(event)} target="_blank" rel="noreferrer">
+                        {short(event.proofHash, 8)}
+                      </a>
+                    </td>
+                    <td>
+                      <span className="pill success">
+                        <span className="status-dot ok" />
+                        {event.verified ? "verified" : "pending"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {events.length === 0 && <tr><td colSpan={4} className="muted">No proof-backed events recorded yet.</td></tr>}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div className="panel">
           <div className="panel-heading">
-            <span>Delivery health</span>
+            <span>Delivery activity</span>
             <Link className="site-link" href="/app/events">Inspect</Link>
           </div>
           <div className="delivery-list">

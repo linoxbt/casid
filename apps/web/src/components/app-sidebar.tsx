@@ -16,14 +16,14 @@ function DashboardIcon() {
     </svg>
   );
 }
-function TopicsIcon() {
+export function TopicsIcon() {
   return (
     <svg viewBox="0 0 18 18" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M7 2.5 5 15.5M13 2.5l-2 13M2.5 6.5h13M2 11.5h13" />
     </svg>
   );
 }
-function VerifyIcon() {
+export function VerifyIcon() {
   return (
     <svg viewBox="0 0 18 18" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 2 15 4.3v4.4C15 12.5 12.4 15 9 16c-3.4-1-6-3.5-6-7.3V4.3Z" />
@@ -39,7 +39,7 @@ function EventsIcon() {
     </svg>
   );
 }
-function DocsIcon() {
+export function DocsIcon() {
   return (
     <svg viewBox="0 0 18 18" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 2.5h5.5L14 6v9.5H5z" />
