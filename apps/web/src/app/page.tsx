@@ -59,7 +59,7 @@ export default function LandingPage() {
                 Share a link. A real payment arrives, Flare verifies it, your content unlocks.
               </p>
               <div className="hero-actions">
-                <Link className="btn btn-primary" href="/unlock">Try Unlock</Link>
+                <Link className="btn btn-primary" href="/app/unlock">Try Unlock</Link>
                 <Link className="btn btn-ghost" href="/app">Casid infrastructure →</Link>
               </div>
             </section>
@@ -190,7 +190,7 @@ export default function LandingPage() {
           </div>
           <div className="footer-col">
             <h4>Product</h4>
-            <Link href="/unlock">Unlock</Link>
+            <Link href="/app/unlock">Unlock</Link>
             <Link href="/app">Dashboard</Link>
             <Link href="/app/topics">Topics</Link>
             <Link href="/app/verify">Verify</Link>

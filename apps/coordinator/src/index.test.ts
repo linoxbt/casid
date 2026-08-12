@@ -69,9 +69,16 @@ describe("POST /v1/topics", () => {
       }),
     );
     expect(res.status).toBe(201);
-    const body = (await res.json()) as { topic: { uri: string; kind: string } };
+    const body = (await res.json()) as {
+      topic: { uri: string; kind: string };
+      onChainParams?: { kind: string; schemaHash: string };
+    };
     expect(body.topic.uri).toBe("topic://payment/xrp/rIndexTestDestination");
     expect(body.topic.kind).toBe("PAYMENT");
+    // onChainParams lets a client sign TopicRegistry.createTopic themselves
+    // instead of relying on the coordinator's relay key.
+    expect(body.onChainParams?.kind).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(body.onChainParams?.schemaHash).toMatch(/^0x[0-9a-f]{64}$/);
   });
 
   it("rejects a malformed topic URI", async () => {

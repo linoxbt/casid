@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoMark } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
+import { WalletButton } from "./wallet-button";
 import { SidebarProvider, useSidebar } from "./sidebar-context";
 
 function DashboardIcon() {
@@ -28,6 +29,15 @@ export function VerifyIcon() {
     <svg viewBox="0 0 18 18" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 2 15 4.3v4.4C15 12.5 12.4 15 9 16c-3.4-1-6-3.5-6-7.3V4.3Z" />
       <path d="M6.3 9 8.3 11 12 6.8" />
+    </svg>
+  );
+}
+function UnlockIcon() {
+  return (
+    <svg viewBox="0 0 18 18" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 8V6a4 4 0 0 1 7.5-1.9" />
+      <rect x="3" y="8" width="12" height="8" rx="2" />
+      <path d="M9 11.5v1.6" />
     </svg>
   );
 }
@@ -66,6 +76,7 @@ function MenuIcon() {
 
 const nav = [
   { href: "/app", label: "Dashboard", icon: DashboardIcon },
+  { href: "/app/unlock", label: "Unlock", icon: UnlockIcon },
   { href: "/app/topics", label: "Topics", icon: TopicsIcon },
   { href: "/app/verify", label: "Verify", icon: VerifyIcon },
   { href: "/app/events", label: "Events", icon: EventsIcon },
@@ -96,7 +107,8 @@ function Shell({ children }: { children: React.ReactNode }) {
 
         <nav className="app-sidebar-nav" aria-label="Primary">
           {nav.map((item) => {
-            const active = pathname === item.href;
+            const active =
+              item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
               <Link
@@ -114,15 +126,18 @@ function Shell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="app-sidebar-foot">
-          <ThemeToggle />
-          <button
-            type="button"
-            className="app-sidebar-collapse"
-            onClick={toggleCollapsed}
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            <CollapseIcon collapsed={isCollapsed} />
-          </button>
+          <WalletButton compact={isCollapsed} />
+          <div className="app-sidebar-foot-row">
+            <ThemeToggle />
+            <button
+              type="button"
+              className="app-sidebar-collapse"
+              onClick={toggleCollapsed}
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              <CollapseIcon collapsed={isCollapsed} />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -134,9 +149,12 @@ function Shell({ children }: { children: React.ReactNode }) {
             <LogoMark size={22} />
             Casid
           </Link>
-          <button type="button" className="btn btn-ghost app-mobile-toggle" aria-label="Open menu" onClick={toggleMobileOpen}>
-            <MenuIcon />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <WalletButton compact />
+            <button type="button" className="btn btn-ghost app-mobile-toggle" aria-label="Open menu" onClick={toggleMobileOpen}>
+              <MenuIcon />
+            </button>
+          </div>
         </header>
         <div className="page-frame">{children}</div>
       </div>

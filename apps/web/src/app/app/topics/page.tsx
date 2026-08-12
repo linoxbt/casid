@@ -2,6 +2,23 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, type Subscription, type Topic } from "@/lib/api";
+import { useWallet, getWalletClient } from "@/components/wallet-context";
+import { COSTON2_CHAIN_ID, TOPIC_REGISTRY_ADDRESS, topicRegistryAbi } from "@/lib/wallet";
+
+const ATTRIBUTION_KEY = "casid:topic-creators";
+
+function loadAttributions(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(ATTRIBUTION_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function shortAddr(addr: string) {
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
 
 export default function TopicsPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -11,6 +28,19 @@ export default function TopicsPage() {
   const [selected, setSelected] = useState<string>("");
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [attributions, setAttributions] = useState<Record<string, string>>({});
+  const [signing, setSigning] = useState(false);
+  const [pendingOnChain, setPendingOnChain] = useState<{
+    uri: string;
+    kind: `0x${string}`;
+    schemaHash: `0x${string}`;
+  } | null>(null);
+
+  const { address, chainId, connect, ensureCoston2 } = useWallet();
+
+  useEffect(() => {
+    setAttributions(loadAttributions());
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -31,12 +61,48 @@ export default function TopicsPage() {
   async function createTopic() {
     setMsg(null);
     setErr(null);
+    setPendingOnChain(null);
     try {
-      const res = await api.createTopic(uri.trim());
+      const trimmedUri = uri.trim();
+      const res = await api.createTopic(trimmedUri);
       setMsg(`Topic ready: ${res.topic.uri}`);
+      if (res.onChainParams) {
+        setPendingOnChain({ uri: res.topic.uri, ...res.onChainParams });
+      }
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function signOnChain() {
+    if (!pendingOnChain) return;
+    setErr(null);
+    if (!address) {
+      await connect();
+      return;
+    }
+    setSigning(true);
+    try {
+      if (chainId !== COSTON2_CHAIN_ID) await ensureCoston2();
+      if (!TOPIC_REGISTRY_ADDRESS) throw new Error("NEXT_PUBLIC_TOPIC_REGISTRY_ADDRESS not configured.");
+      const wallet = getWalletClient(address);
+      const txHash = await wallet.writeContract({
+        address: TOPIC_REGISTRY_ADDRESS,
+        abi: topicRegistryAbi,
+        functionName: "createTopic",
+        args: [pendingOnChain.kind, pendingOnChain.schemaHash, pendingOnChain.uri],
+        chain: null,
+      });
+      const next = { ...attributions, [pendingOnChain.uri]: address };
+      setAttributions(next);
+      window.localStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(next));
+      setMsg(`Signed on-chain: ${txHash.slice(0, 10)}… (as ${shortAddr(address)})`);
+      setPendingOnChain(null);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSigning(false);
     }
   }
 
@@ -94,6 +160,16 @@ export default function TopicsPage() {
             <button className="btn btn-primary" onClick={createTopic}>
               Create topic
             </button>
+            {pendingOnChain && (
+              <div className="alert">
+                Register on-chain with your own wallet instead of Casid&apos;s relay:
+                <div style={{ marginTop: "0.5rem" }}>
+                  <button className="btn btn-ghost" onClick={signOnChain} disabled={signing}>
+                    {signing ? "Signing…" : address ? `Sign as ${shortAddr(address)}` : "Connect wallet to sign"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -185,6 +261,7 @@ export default function TopicsPage() {
               <span className="pill">{t.kind}</span>
               <span className="muted">
                 on-chain id {t.onChainId ?? "—"} · {t.active ? "active" : "off"}
+                {attributions[t.uri] && ` · by ${shortAddr(attributions[t.uri])}`}
               </span>
             </header>
             <div className="mono">{t.uri}</div>

@@ -223,6 +223,16 @@ function kindToBytes32(kind: string): Hex {
   return keccak256(stringToHex(kind));
 }
 
+/**
+ * The exact (kind, schemaHash) bytes32 pair TopicRegistry.createTopic
+ * expects, computed the same way registerTopicOnChain does below — exposed
+ * so a client with its own wallet can sign the same call itself instead of
+ * relying on the coordinator's relay key.
+ */
+export function topicOnChainParams(kind: string, schemaHashInput: string): { kind: Hex; schemaHash: Hex } {
+  return { kind: kindToBytes32(kind), schemaHash: keccak256(stringToHex(schemaHashInput)) };
+}
+
 function requireAccount(ctx: FlareContext): { account: ReturnType<typeof privateKeyToAccount>; wallet: ReturnType<typeof createWalletClient> } | null {
   const pk = process.env.DEPLOYER_PRIVATE_KEY;
   if (!pk) return null;

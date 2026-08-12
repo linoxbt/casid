@@ -27,6 +27,7 @@ import {
   fireEventOnChain,
   registerSubscriptionOnChain,
   registerTopicOnChain,
+  topicOnChainParams,
 } from "./services/chain";
 import { evaluateComposition } from "./services/composition";
 import {
@@ -205,7 +206,11 @@ app.post("/v1/topics", async (c) => {
 
   const existing = findTopicByUri(store, uri!);
   if (existing) {
-    return c.json({ topic: existing, existed: true });
+    return c.json({
+      topic: existing,
+      existed: true,
+      onChainParams: topicOnChainParams(existing.kind, existing.parsed.schemaHashInput),
+    });
   }
 
   const record = createTopicRecord(store, {
@@ -219,7 +224,8 @@ app.post("/v1/topics", async (c) => {
     schemaHashInput: record.parsed.schemaHashInput,
     uri: record.uri,
   });
-  return c.json({ topic: record, existed: false, onChain }, 201);
+  const onChainParams = topicOnChainParams(record.kind, record.parsed.schemaHashInput);
+  return c.json({ topic: record, existed: false, onChain, onChainParams }, 201);
 });
 
 app.get("/v1/topics/:id", (c) => {

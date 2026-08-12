@@ -187,14 +187,14 @@ p { margin: 0; }
 
 .app-sidebar-foot {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.6rem;
   padding-top: 0.85rem;
   margin-top: 0.5rem;
   border-top: 1px solid var(--line);
 }
-.app-shell.collapsed .app-sidebar-foot { flex-direction: column; }
+.app-sidebar-foot-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.app-shell.collapsed .app-sidebar-foot-row { flex-direction: column; }
 .app-sidebar-collapse {
   display: inline-flex;
   align-items: center;
@@ -208,6 +208,21 @@ p { margin: 0; }
   cursor: pointer;
 }
 .app-sidebar-collapse:hover { color: var(--ink); border-color: var(--accent-border); }
+
+.wallet-btn { width: 100%; justify-content: flex-start; gap: 0.55rem; font-size: 0.82rem; }
+.app-shell.collapsed .wallet-btn { width: 2.5rem; padding: 0; justify-content: center; }
+.wallet-connected { display: flex; flex-direction: column; gap: 0.4rem; }
+.wallet-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--pass); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pass) 20%, transparent); flex-shrink: 0; }
+.wallet-switch {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--warn);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
 
 .app-sidebar-backdrop { display: none; }
 
@@ -369,6 +384,22 @@ p { margin: 0; }
 .grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .form { display: grid; gap: 0.85rem; }
 .section-title { margin: 2rem 0 0.9rem; font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; }
+
+.tab-bar { display: flex; gap: 0.2rem; border-bottom: 1px solid var(--line); margin-bottom: 1.5rem; overflow-x: auto; }
+.tab-btn {
+  padding: 0.7rem 0.9rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.tab-btn:hover { color: var(--ink); }
+.tab-btn.active { color: var(--ink); border-bottom-color: var(--accent); }
 .list { display: grid; gap: 0.65rem; }
 .list-item header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
 .pipeline { color: var(--muted); line-height: 1.65; margin: 0; padding-left: 1.2rem; }

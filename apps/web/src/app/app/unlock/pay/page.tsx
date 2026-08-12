@@ -4,7 +4,6 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
-import { Logo } from "@/components/logo";
 
 function PayFlow() {
   const params = useSearchParams();
@@ -54,7 +53,7 @@ function PayFlow() {
 
   if (unlocked) {
     return (
-      <div className="card">
+      <div className="card" style={{ maxWidth: 560 }}>
         <span className="pill success">Verified by Flare</span>
         <h2 style={{ marginTop: "0.75rem" }}>Unlocked</h2>
         <p style={{ whiteSpace: "pre-wrap", color: "var(--ink)", lineHeight: 1.6 }}>{secret}</p>
@@ -74,7 +73,7 @@ function PayFlow() {
   }
 
   return (
-    <div className="card">
+    <div className="card" style={{ maxWidth: 560 }}>
       <h2>Pay to unlock</h2>
       <p className="muted" style={{ fontSize: "0.9rem" }}>
         Send any {chain.toUpperCase()} payment to the address below, then paste the transaction id.
@@ -107,21 +106,16 @@ function PayFlow() {
 
 export default function PayPage() {
   return (
-    <div className="theme-shell">
-      <header className="site-header">
-        <div className="site-header-inner">
-          <Logo />
-          <div className="site-actions site-actions-end">
-            <Link href="/unlock" className="site-link">Create your own</Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="page-frame" style={{ paddingBlock: "3rem", maxWidth: 640, marginInline: "auto" }}>
-        <Suspense fallback={<div className="muted">Loading…</div>}>
-          <PayFlow />
-        </Suspense>
-      </main>
-    </div>
+    <>
+      <section className="hero">
+        <h1>Pay to unlock</h1>
+        <p>
+          <Link href="/app/unlock" className="site-link">Create your own gate →</Link>
+        </p>
+      </section>
+      <Suspense fallback={<div className="muted">Loading…</div>}>
+        <PayFlow />
+      </Suspense>
+    </>
   );
 }

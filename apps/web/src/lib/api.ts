@@ -105,7 +105,11 @@ export const api = {
     }),
   topics: () => request<{ topics: Topic[] }>("/v1/topics"),
   createTopic: (uri: string) =>
-    request<{ topic: Topic }>("/v1/topics", {
+    request<{
+      topic: Topic;
+      existed: boolean;
+      onChainParams?: { kind: `0x${string}`; schemaHash: `0x${string}` };
+    }>("/v1/topics", {
       method: "POST",
       body: JSON.stringify({ uri }),
     }),

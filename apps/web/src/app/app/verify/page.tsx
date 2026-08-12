@@ -53,9 +53,19 @@ function TopicSelect({
   );
 }
 
+type Tab = "payment" | "ftso" | "composition" | "address";
+
+const tabs: Array<{ id: Tab; label: string }> = [
+  { id: "payment", label: "Payment proof" },
+  { id: "ftso", label: "FTSO threshold" },
+  { id: "composition", label: "Composition" },
+  { id: "address", label: "Address validity" },
+];
+
 export default function VerifyPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("payment");
 
   const load = useCallback(async () => {
     try {
@@ -84,13 +94,26 @@ export default function VerifyPage() {
 
       {err && <div className="alert error">{err}</div>}
 
-      <div className="grid cols-2">
-        <PaymentCard topics={paymentTopics} onSettled={load} />
-        <FtsoCard topics={ftsoTopics} onSettled={load} />
+      <div className="tab-bar" role="tablist">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={`tab-btn ${tab === t.id ? "active" : ""}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
-      <div className="grid cols-2">
-        <CompositionCard topics={compositionTopics} />
-        <AddressValidityCard />
+
+      <div style={{ maxWidth: 560 }}>
+        {tab === "payment" && <PaymentCard topics={paymentTopics} onSettled={load} />}
+        {tab === "ftso" && <FtsoCard topics={ftsoTopics} onSettled={load} />}
+        {tab === "composition" && <CompositionCard topics={compositionTopics} />}
+        {tab === "address" && <AddressValidityCard />}
       </div>
     </>
   );
