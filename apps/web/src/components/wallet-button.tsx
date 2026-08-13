@@ -18,20 +18,39 @@ function WalletIcon() {
 }
 
 export function WalletButton({ compact = false }: { compact?: boolean }) {
-  const { address, isConnecting, connect, disconnect, chainId, ensureCoston2, error } = useWallet();
+  const { address, isConnecting, connect, disconnect, chainId, ensureCoston2, error, hasProvider } = useWallet();
 
   if (!address) {
+    if (!hasProvider) {
+      return (
+        <a
+          href="https://metamask.io/download/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-ghost wallet-btn"
+          title="No browser wallet detected — install one to connect"
+        >
+          <WalletIcon />
+          {!compact && "Get a wallet"}
+          {compact && <span className="wallet-badge" />}
+        </a>
+      );
+    }
     return (
-      <button
-        type="button"
-        className="btn btn-ghost wallet-btn"
-        onClick={() => void connect()}
-        disabled={isConnecting}
-        title={error ?? "Connect wallet"}
-      >
-        <WalletIcon />
-        {!compact && (isConnecting ? "Connecting…" : "Connect wallet")}
-      </button>
+      <>
+        <button
+          type="button"
+          className="btn btn-primary wallet-btn"
+          onClick={() => void connect()}
+          disabled={isConnecting}
+          title={error ?? "Connect wallet"}
+        >
+          <WalletIcon />
+          {!compact && (isConnecting ? "Connecting…" : "Connect wallet")}
+          {compact && error && <span className="wallet-badge" />}
+        </button>
+        {!compact && error && <p className="wallet-error">{error}</p>}
+      </>
     );
   }
 
@@ -40,7 +59,7 @@ export function WalletButton({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
       <button type="button" className="btn btn-ghost wallet-btn" onClick={disconnect} title={short(address)}>
-        <span className="wallet-dot" />
+        <span className={`wallet-dot ${wrongNetwork ? "warn" : ""}`} />
       </button>
     );
   }

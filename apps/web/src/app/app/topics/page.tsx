@@ -237,8 +237,7 @@ export default function TopicsPage() {
         {topics.map((t) => (
           <div
             key={t.id}
-            className="list-item"
-            style={{ cursor: "pointer" }}
+            className={`list-item card-hover ${t.uri === selected ? "list-item-active" : ""}`}
             onClick={() => setSelected(t.uri)}
           >
             <header>
