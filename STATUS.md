@@ -73,13 +73,22 @@ on-chain proof consumption are fully live end-to-end.
 - Web: Netlify (`netlify.toml`, `apps/web`)
 - GitHub autodeploy on the Railway service was found disabled (pushes to
   `main` weren't triggering redeploys) — that, not an account-wide limit,
-  was the actual cause of "Failed to fetch" on the live site. Fixed by
-  deploying the latest commit directly; re-enabling autodeploy is a pending
-  manual follow-up in the Railway dashboard.
+  was the actual cause of "Failed to fetch" on the live site. Reconfirmed
+  2026-08-13 15:22 UTC: pushing `152c6dc` to `main` did not trigger a new
+  Railway deployment (`list-deployments` still showed only `69ad1f9`), and
+  `railway redeploy` just re-runs the *last known* deployment's snapshot
+  rather than pulling the new commit. Until autodeploy is re-enabled in the
+  dashboard, ship new commits with `railway up --service casid` from the
+  repo root (uploads the local working tree directly) after every push to
+  `main`.
+- Netlify (`casid` site) *does* autodeploy correctly on push to `main` — no
+  workaround needed there.
 
 ## Next (optional)
 1. ~~Push GitHub public repo~~ — done (`github.com/linoxbt/casid`)
 2. ~~Deploy `apps/web`~~ — done (Netlify)
-3. Continuous Payment topic watchers for real XRPL txs
+3. ~~Continuous Payment topic watchers for real XRPL txs~~ — done
+   (`apps/coordinator/src/services/xrplWatcher.ts`)
 4. Design partner outreach for XRPFi teams
-5. Re-enable Railway GitHub autodeploy for the coordinator service
+5. Re-enable Railway GitHub autodeploy for the coordinator service (until
+   then, use `railway up --service casid` after each push — see above)
