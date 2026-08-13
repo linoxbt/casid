@@ -5,17 +5,6 @@ import { api, type Subscription, type Topic } from "@/lib/api";
 import { useWallet, getWalletClient } from "@/components/wallet-context";
 import { COSTON2_CHAIN_ID, TOPIC_REGISTRY_ADDRESS, topicRegistryAbi } from "@/lib/wallet";
 
-const ATTRIBUTION_KEY = "casid:topic-creators";
-
-function loadAttributions(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  try {
-    return JSON.parse(window.localStorage.getItem(ATTRIBUTION_KEY) ?? "{}");
-  } catch {
-    return {};
-  }
-}
-
 function shortAddr(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
@@ -28,19 +17,15 @@ export default function TopicsPage() {
   const [selected, setSelected] = useState<string>("");
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [attributions, setAttributions] = useState<Record<string, string>>({});
   const [signing, setSigning] = useState(false);
   const [pendingOnChain, setPendingOnChain] = useState<{
+    id: string;
     uri: string;
     kind: `0x${string}`;
     schemaHash: `0x${string}`;
   } | null>(null);
 
   const { address, chainId, connect, ensureCoston2 } = useWallet();
-
-  useEffect(() => {
-    setAttributions(loadAttributions());
-  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -64,10 +49,10 @@ export default function TopicsPage() {
     setPendingOnChain(null);
     try {
       const trimmedUri = uri.trim();
-      const res = await api.createTopic(trimmedUri);
+      const res = await api.createTopic(trimmedUri, address ?? undefined);
       setMsg(`Topic ready: ${res.topic.uri}`);
       if (res.onChainParams) {
-        setPendingOnChain({ uri: res.topic.uri, ...res.onChainParams });
+        setPendingOnChain({ id: res.topic.id, uri: res.topic.uri, ...res.onChainParams });
       }
       await load();
     } catch (e) {
@@ -94,11 +79,10 @@ export default function TopicsPage() {
         args: [pendingOnChain.kind, pendingOnChain.schemaHash, pendingOnChain.uri],
         chain: null,
       });
-      const next = { ...attributions, [pendingOnChain.uri]: address };
-      setAttributions(next);
-      window.localStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(next));
+      await api.setTopicCreator(pendingOnChain.id, address);
       setMsg(`Signed on-chain: ${txHash.slice(0, 10)}… (as ${shortAddr(address)})`);
       setPendingOnChain(null);
+      await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -261,7 +245,7 @@ export default function TopicsPage() {
               <span className="pill">{t.kind}</span>
               <span className="muted">
                 on-chain id {t.onChainId ?? "—"} · {t.active ? "active" : "off"}
-                {attributions[t.uri] && ` · by ${shortAddr(attributions[t.uri])}`}
+                {t.createdBy && ` · by ${shortAddr(t.createdBy)}`}
               </span>
             </header>
             <div className="mono">{t.uri}</div>

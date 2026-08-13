@@ -79,7 +79,7 @@ function networkFromEnv(): CasidNetwork {
   return chainId === 14 ? "flare" : "coston2";
 }
 
-function isFlareNetwork(chainId: number): boolean {
+export function isFlareNetwork(chainId: number): boolean {
   // Flare mainnet 14, Coston2 114, Songbird 19, Coston 16
   return [14, 114, 19, 16].includes(chainId);
 }

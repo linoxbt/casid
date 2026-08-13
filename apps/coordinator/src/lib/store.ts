@@ -16,6 +16,7 @@ export interface TopicRecord {
   parsed: ParsedTopic;
   createdAt: string;
   active: boolean;
+  createdBy?: string;
 }
 
 /** Compatibility façade — still exposes Map-like sizes for health. */
@@ -67,6 +68,7 @@ function rowToTopic(row: {
   schema_hash_input: string | null;
   created_at: string;
   active: number;
+  created_by: string | null;
 }): TopicRecord {
   let parsed: ParsedTopic;
   try {
@@ -87,6 +89,7 @@ function rowToTopic(row: {
     parsed,
     createdAt: row.created_at,
     active: row.active === 1,
+    createdBy: row.created_by ?? undefined,
   };
 }
 
@@ -118,11 +121,25 @@ export function seedStarterTopics(store: Store): void {
   }
 }
 
+const TOPIC_COLUMNS =
+  "id, on_chain_id, uri, kind, schema_hash_input, created_at, active, created_by";
+
+type TopicRow = {
+  id: string;
+  on_chain_id: number | null;
+  uri: string;
+  kind: string;
+  schema_hash_input: string | null;
+  created_at: string;
+  active: number;
+  created_by: string | null;
+};
+
 function insertTopic(store: Store, t: TopicRecord): void {
   store.db
     .query(
-      `INSERT INTO topics(id, on_chain_id, uri, kind, schema_hash_input, created_at, active)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO topics(id, on_chain_id, uri, kind, schema_hash_input, created_at, active, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       t.id,
@@ -132,44 +149,21 @@ function insertTopic(store: Store, t: TopicRecord): void {
       t.parsed.schemaHashInput,
       t.createdAt,
       t.active ? 1 : 0,
+      t.createdBy ?? null,
     );
 }
 
 export function listTopics(store: Store): TopicRecord[] {
   const rows = store.db
-    .query(
-      `SELECT id, on_chain_id, uri, kind, schema_hash_input, created_at, active
-       FROM topics ORDER BY created_at DESC`,
-    )
-    .all() as Array<{
-    id: string;
-    on_chain_id: number | null;
-    uri: string;
-    kind: string;
-    schema_hash_input: string | null;
-    created_at: string;
-    active: number;
-  }>;
+    .query(`SELECT ${TOPIC_COLUMNS} FROM topics ORDER BY created_at DESC`)
+    .all() as TopicRow[];
   return rows.map(rowToTopic);
 }
 
 export function getTopicById(store: Store, id: string): TopicRecord | undefined {
   const row = store.db
-    .query(
-      `SELECT id, on_chain_id, uri, kind, schema_hash_input, created_at, active
-       FROM topics WHERE id = ?`,
-    )
-    .get(id) as
-    | {
-        id: string;
-        on_chain_id: number | null;
-        uri: string;
-        kind: string;
-        schema_hash_input: string | null;
-        created_at: string;
-        active: number;
-      }
-    | null;
+    .query(`SELECT ${TOPIC_COLUMNS} FROM topics WHERE id = ?`)
+    .get(id) as TopicRow | null;
   return row ? rowToTopic(row) : undefined;
 }
 
@@ -178,27 +172,14 @@ export function findTopicByUri(
   uri: string,
 ): TopicRecord | undefined {
   const row = store.db
-    .query(
-      `SELECT id, on_chain_id, uri, kind, schema_hash_input, created_at, active
-       FROM topics WHERE uri = ?`,
-    )
-    .get(uri) as
-    | {
-        id: string;
-        on_chain_id: number | null;
-        uri: string;
-        kind: string;
-        schema_hash_input: string | null;
-        created_at: string;
-        active: number;
-      }
-    | null;
+    .query(`SELECT ${TOPIC_COLUMNS} FROM topics WHERE uri = ?`)
+    .get(uri) as TopicRow | null;
   return row ? rowToTopic(row) : undefined;
 }
 
 export function createTopicRecord(
   store: Store,
-  input: { uri: string; kind: string; parsed: ParsedTopic; onChainId?: number },
+  input: { uri: string; kind: string; parsed: ParsedTopic; onChainId?: number; createdBy?: string },
 ): TopicRecord {
   const existing = findTopicByUri(store, input.uri);
   if (existing) return existing;
@@ -215,9 +196,16 @@ export function createTopicRecord(
     createdAt: new Date().toISOString(),
     active: true,
     onChainId: input.onChainId ?? maxRow.m + 1,
+    createdBy: input.createdBy,
   };
   insertTopic(store, t);
   return t;
+}
+
+/** Records the wallet address that signed a topic's on-chain createTopic tx directly (bypassing the coordinator's relay key). */
+export function setTopicCreatedBy(store: Store, uri: string, address: string): TopicRecord | undefined {
+  store.db.query("UPDATE topics SET created_by = ? WHERE uri = ?").run(address, uri);
+  return findTopicByUri(store, uri);
 }
 
 export function createSubscription(
@@ -517,4 +505,31 @@ export function activeSubsForTopic(store: Store, topicUri: string): Subscription
   return listSubscriptions(store).filter(
     (s) => s.active && s.topicUri === topicUri && s.webhookUrl,
   );
+}
+
+export interface PaymentWatchCursor {
+  topicUri: string;
+  lastLedgerIndex: number;
+  lastTxHash?: string;
+}
+
+export function getWatchCursor(store: Store, topicUri: string): PaymentWatchCursor {
+  const row = store.db
+    .query("SELECT topic_uri, last_ledger_index, last_tx_hash FROM payment_watch_cursors WHERE topic_uri = ?")
+    .get(topicUri) as { topic_uri: string; last_ledger_index: number; last_tx_hash: string | null } | null;
+  if (!row) return { topicUri, lastLedgerIndex: 0 };
+  return { topicUri: row.topic_uri, lastLedgerIndex: row.last_ledger_index, lastTxHash: row.last_tx_hash ?? undefined };
+}
+
+export function setWatchCursor(store: Store, cursor: PaymentWatchCursor): void {
+  store.db
+    .query(
+      `INSERT INTO payment_watch_cursors(topic_uri, last_ledger_index, last_tx_hash, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(topic_uri) DO UPDATE SET
+         last_ledger_index = excluded.last_ledger_index,
+         last_tx_hash = excluded.last_tx_hash,
+         updated_at = excluded.updated_at`,
+    )
+    .run(cursor.topicUri, cursor.lastLedgerIndex, cursor.lastTxHash ?? null, new Date().toISOString());
 }

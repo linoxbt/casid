@@ -27,6 +27,7 @@ export type Topic = {
   active: boolean;
   createdAt: string;
   pipeline?: string[];
+  createdBy?: string;
 };
 
 export type Subscription = {
@@ -104,14 +105,19 @@ export const api = {
       body: JSON.stringify({ topicUri }),
     }),
   topics: () => request<{ topics: Topic[] }>("/v1/topics"),
-  createTopic: (uri: string) =>
+  createTopic: (uri: string, createdBy?: string) =>
     request<{
       topic: Topic;
       existed: boolean;
       onChainParams?: { kind: `0x${string}`; schemaHash: `0x${string}` };
     }>("/v1/topics", {
       method: "POST",
-      body: JSON.stringify({ uri }),
+      body: JSON.stringify({ uri, createdBy }),
+    }),
+  setTopicCreator: (topicId: string, address: string) =>
+    request<{ topic: Topic }>(`/v1/topics/${topicId}/creator`, {
+      method: "PATCH",
+      body: JSON.stringify({ address }),
     }),
   subscriptions: () =>
     request<{ subscriptions: Subscription[] }>("/v1/subscriptions"),

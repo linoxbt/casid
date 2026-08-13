@@ -10,11 +10,14 @@ import {
   deactivateSubscription,
   findTopicByUri,
   getDelivery,
+  getWatchCursor,
   listDeliveries,
   listEvents,
   listSubscriptions,
   recordDelivery,
   recordEvent,
+  setTopicCreatedBy,
+  setWatchCursor,
   updateDeliveryStatus,
   type Store,
 } from "./store";
@@ -170,5 +173,34 @@ describe("deliveries", () => {
     expect(fetched?.status).toBe("delivered");
     expect(fetched?.attempts).toBe(1);
     expect(listDeliveries(store, 10).some((d) => d.id === delivery.id)).toBe(true);
+  });
+});
+
+describe("topic creator attribution", () => {
+  it("records and updates the wallet address that created a topic", () => {
+    const uri = "topic://payment/xrp/rAttributionTest";
+    const created = createTopicRecord(store, { uri, kind: "PAYMENT", parsed: parseTopicUri(uri), createdBy: "0xabc" });
+    expect(created.createdBy).toBe("0xabc");
+
+    const updated = setTopicCreatedBy(store, uri, "0xdef");
+    expect(updated?.createdBy).toBe("0xdef");
+    expect(findTopicByUri(store, uri)?.createdBy).toBe("0xdef");
+  });
+});
+
+describe("payment watch cursors", () => {
+  it("defaults to ledger 0 for an unseen topic", () => {
+    const cursor = getWatchCursor(store, "topic://payment/xrp/rNeverPolled");
+    expect(cursor.lastLedgerIndex).toBe(0);
+    expect(cursor.lastTxHash).toBeUndefined();
+  });
+
+  it("persists and advances a cursor", () => {
+    const uri = "topic://payment/xrp/rWatchedDest";
+    setWatchCursor(store, { topicUri: uri, lastLedgerIndex: 100, lastTxHash: "H1" });
+    expect(getWatchCursor(store, uri)).toEqual({ topicUri: uri, lastLedgerIndex: 100, lastTxHash: "H1" });
+
+    setWatchCursor(store, { topicUri: uri, lastLedgerIndex: 150, lastTxHash: "H2" });
+    expect(getWatchCursor(store, uri)).toEqual({ topicUri: uri, lastLedgerIndex: 150, lastTxHash: "H2" });
   });
 });

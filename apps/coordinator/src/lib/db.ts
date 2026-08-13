@@ -37,7 +37,8 @@ function migrate(db: Db): void {
       kind TEXT NOT NULL,
       schema_hash_input TEXT,
       created_at TEXT NOT NULL,
-      active INTEGER NOT NULL DEFAULT 1
+      active INTEGER NOT NULL DEFAULT 1,
+      created_by TEXT
     );
 
     CREATE TABLE IF NOT EXISTS subscriptions (
@@ -80,9 +81,23 @@ function migrate(db: Db): void {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS payment_watch_cursors (
+      topic_uri TEXT PRIMARY KEY,
+      last_ledger_index INTEGER NOT NULL DEFAULT 0,
+      last_tx_hash TEXT,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_subs_topic ON subscriptions(topic_uri);
   `);
+
+  // Databases created before `created_by` existed on `topics` need it added
+  // in place — CREATE TABLE IF NOT EXISTS above is a no-op against them.
+  const topicColumns = db.query("PRAGMA table_info(topics)").all() as { name: string }[];
+  if (!topicColumns.some((c) => c.name === "created_by")) {
+    db.exec("ALTER TABLE topics ADD COLUMN created_by TEXT;");
+  }
 }
 
 export function getMeta(db: Db, key: string): string | null {

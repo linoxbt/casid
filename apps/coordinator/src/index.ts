@@ -13,17 +13,17 @@ import {
   listSubscriptions,
   listTopics,
   seedStarterTopics,
+  setTopicCreatedBy,
   type Store,
 } from "./lib/store";
 import {
+  attestPayment,
   describeAttestationPipeline,
   encodeProofPayload,
   recordFtsoEvent,
-  recordPaymentEvent,
 } from "./services/attestation";
 import { deliverToSubscribers } from "./services/delivery";
 import {
-  encodePaymentProof,
   fireEventOnChain,
   registerSubscriptionOnChain,
   registerTopicOnChain,
@@ -33,17 +33,18 @@ import { evaluateComposition } from "./services/composition";
 import {
   fetchProofByRound,
   liveAddressValidityFlow,
-  livePaymentFlow,
   prepareAddressValidity,
   preparePayment,
   votingRoundId,
 } from "./services/fdcLive";
 import {
+  isFlareNetwork,
   readFtsoPriceWei,
   readProofVerifierMockMode,
   resolveFlareContext,
   type FlareContext,
 } from "./services/flare";
+import { startXrplWatcher } from "./services/xrplWatcher";
 import {
   checkRateLimit,
   hasValidApiKey,
@@ -72,6 +73,13 @@ async function getFlare(): Promise<FlareContext> {
     );
   }
   return flareCtx;
+}
+
+// Only watch XRPL when actually pointed at a real Flare network — mirrors
+// the same FLARE_CHAIN_ID=31337 signal index.test.ts uses to keep itself
+// hermetic, so `bun test` never opens a live interval or hits XRPL's RPC.
+if (isFlareNetwork(Number(process.env.FLARE_CHAIN_ID ?? 114)) && process.env.XRPL_WATCHER_ENABLED !== "false") {
+  startXrplWatcher(store, getFlare, SIGNING_SECRET);
 }
 
 // Warm Flare registry in background
@@ -188,7 +196,7 @@ app.get("/v1/topics", (c) => {
 });
 
 app.post("/v1/topics", async (c) => {
-  const body = await c.req.json<{ uri?: string; spec?: TopicSpec }>();
+  const body = await c.req.json<{ uri?: string; spec?: TopicSpec; createdBy?: string }>();
   let uri = body.uri;
   let parsed;
   try {
@@ -217,6 +225,7 @@ app.post("/v1/topics", async (c) => {
     uri: uri!,
     kind: parsed.kind,
     parsed,
+    createdBy: body.createdBy,
   });
   const flare = await getFlare();
   const onChain = await registerTopicOnChain(flare, {
@@ -226,6 +235,16 @@ app.post("/v1/topics", async (c) => {
   });
   const onChainParams = topicOnChainParams(record.kind, record.parsed.schemaHashInput);
   return c.json({ topic: record, existed: false, onChain, onChainParams }, 201);
+});
+
+app.patch("/v1/topics/:id/creator", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json<{ address?: string }>();
+  if (!body.address) return c.json({ error: "address required" }, 400);
+  const existing = getTopicById(store, id);
+  if (!existing) return c.json({ error: "Topic not found" }, 404);
+  const updated = setTopicCreatedBy(store, existing.uri, body.address);
+  return c.json({ topic: updated });
 });
 
 app.get("/v1/topics/:id", (c) => {
@@ -310,68 +329,34 @@ app.post("/v1/attest/payment", async (c) => {
   try {
     const flare = await getFlare();
     const chain = body.topicUri.includes("/btc/")
-      ? "BTC"
+      ? "btc"
       : body.topicUri.includes("/doge/")
-        ? "DOGE"
-        : "XRPL";
+        ? "doge"
+        : "xrp";
 
     if (!body.txHash) {
       return c.json({ error: "txHash required for FDC Payment attestation" }, 400);
     }
 
-    const live = await livePaymentFlow(flare, {
-      chain: chain === "BTC" ? "btc" : chain === "DOGE" ? "doge" : "xrp",
-      transactionId: body.txHash,
-      submit: true,
-      waitRounds: body.waitRounds,
-    });
-    const proofFound = Boolean(live.proof?.response && live.proof.proof?.length);
-    if (!proofFound) {
-      return c.json(
-        {
-          status: "pending_proof",
-          error: "FDC Payment proof not finalized",
-          fdc: live,
-        },
-        202,
-      );
-    }
-
-    const event = await recordPaymentEvent(store, {
+    const result = await attestPayment(store, flare, SIGNING_SECRET, {
       topicUri: body.topicUri,
+      chain,
       txHash: body.txHash,
       amount: body.amount,
-      proofResponse: live.proof?.response ?? {},
+      deliver: body.deliver,
+      fireOnChain: body.fireOnChain,
+      waitRounds: body.waitRounds,
     });
 
-    let deliveries = [];
-    if (body.deliver !== false) {
-      deliveries = await deliverToSubscribers(store, event, SIGNING_SECRET);
-    }
-
-    let onChain = null;
-    if (body.fireOnChain) {
-      try {
-        const proofHex = encodePaymentProof({
-          response: live.proof!.response!,
-          proof: live.proof!.proof!,
-        });
-        onChain = await fireEventOnChain(flare, event, { proofHex });
-      } catch (encodeErr) {
-        onChain = {
-          ok: false,
-          error: `Proof encoding failed: ${encodeErr instanceof Error ? encodeErr.message : String(encodeErr)}`,
-        };
-      }
-    } else {
-      onChain = await fireEventOnChain(flare, event);
+    if (result.status === "pending_proof") {
+      return c.json(result, 202);
     }
 
     return c.json({
-      event,
-      fdc: live,
-      deliveries,
-      onChain,
+      event: result.event,
+      fdc: result.fdc,
+      deliveries: result.deliveries,
+      onChain: result.onChain,
     });
   } catch (e) {
     return c.json({ error: e instanceof Error ? e.message : String(e) }, 400);

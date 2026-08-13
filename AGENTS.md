@@ -39,3 +39,9 @@ bun run dev:web           # :3100
 - Coston2 chainId `114`, registry `0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019`
 - Production path: FDC Payment + FTSO — both the off-chain prepare/DA-proof calls and on-chain proof consumption are genuinely live against Flare testnet infra (see above)
 - Local: `anvil` + `DeployLocal.s.sol` → see `deployments/local.json`
+
+## Deployment
+
+- Coordinator: Railway (project `noble-achievement`, service `casid`, GitHub-connected to `linoxbt/casid` branch `main`) — https://casid-production.up.railway.app. Build/start are overridden on the service (not the `package.json` scripts) since Railway injects env vars natively and doesn't have the repo's `.env`: build `bun install && bun run --filter @casid/core build`, start `cd apps/coordinator && bun run src/index.ts`. Listens on `COORDINATOR_PORT` (set to `8080` on Railway; domain's `targetPort` matches). `NODE_ENV=production` + `CASID_API_KEY` gate mutating `/v1/*` routes so the public URL can't be used to drain the deployer key's gas.
+- Web: Netlify, per `netlify.toml` (builds from repo root for Bun workspace resolution). `NEXT_PUBLIC_COORDINATOR_URL` must point at the Railway domain above, and `NEXT_PUBLIC_CASID_API_KEY` must match the coordinator's `CASID_API_KEY` — both are set in the Netlify UI (Site configuration → Environment variables), not in `netlify.toml`, since `NEXT_PUBLIC_*` is inlined at build time.
+- GitHub autodeploy was found disabled on the Railway service (silent — pushes to `main` didn't trigger new deployments, which was the real cause of prior "Failed to fetch" reports, not a Railway account limit). Check it's enabled before assuming a push will go live.

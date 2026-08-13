@@ -60,15 +60,26 @@ Verified two ways:
 
 Full detail in `deployments/coston2.json`'s `proofStructFix` block.
 
-**Known remaining gap:** the coordinator's proof-construction code
-(`apps/coordinator/src/services/chain.ts`) needs to ABI-encode the DA Layer's
-real response into `IPayment.Proof` before firing on-chain — that's the
-other half of this fix (see the coordinator's own commit for status). The
-off-chain FDC verification that actually gates Unlock's reveal is unaffected
-by any of this and has been real throughout.
+**Resolved:** the coordinator's proof-construction code
+(`apps/coordinator/src/services/chain.ts`'s `encodePaymentProof`) ABI-encodes
+the DA Layer's real response into `IPayment.Proof` and is wired into
+`POST /v1/attest/payment` (`index.ts`) when `fireOnChain: true` is requested.
+Both the off-chain FDC verification that gates Unlock's reveal and the
+on-chain proof consumption are fully live end-to-end.
+
+## Live deployment (2026-08-13)
+- Coordinator: Railway project `noble-achievement`, service `casid` —
+  https://casid-production.up.railway.app (`/health`, `/v1/meta`)
+- Web: Netlify (`netlify.toml`, `apps/web`)
+- GitHub autodeploy on the Railway service was found disabled (pushes to
+  `main` weren't triggering redeploys) — that, not an account-wide limit,
+  was the actual cause of "Failed to fetch" on the live site. Fixed by
+  deploying the latest commit directly; re-enabling autodeploy is a pending
+  manual follow-up in the Railway dashboard.
 
 ## Next (optional)
-1. Push GitHub public repo
-2. Vercel deploy of `apps/web`
+1. ~~Push GitHub public repo~~ — done (`github.com/linoxbt/casid`)
+2. ~~Deploy `apps/web`~~ — done (Netlify)
 3. Continuous Payment topic watchers for real XRPL txs
 4. Design partner outreach for XRPFi teams
+5. Re-enable Railway GitHub autodeploy for the coordinator service

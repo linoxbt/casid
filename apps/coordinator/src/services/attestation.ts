@@ -6,6 +6,11 @@ import {
 } from "@casid/core";
 import type { Store, TopicRecord } from "../lib/store";
 import { findTopicByUri, recordEvent } from "../lib/store";
+import { encodePaymentProof, fireEventOnChain, type FireResult } from "./chain";
+import { deliverToSubscribers } from "./delivery";
+import { livePaymentFlow } from "./fdcLive";
+import type { FlareContext } from "./flare";
+import type { WebhookDelivery } from "@casid/core";
 
 export interface PaymentEventInput {
   topicUri: string;
@@ -73,6 +78,78 @@ export async function recordPaymentEvent(
   };
 
   return recordEvent(store, event);
+}
+
+export type AttestPaymentResult =
+  | {
+      status: "recorded";
+      event: AttestedEvent;
+      fdc: Awaited<ReturnType<typeof livePaymentFlow>>;
+      deliveries: WebhookDelivery[];
+      onChain: FireResult | null;
+    }
+  | { status: "pending_proof"; error: string; fdc: Awaited<ReturnType<typeof livePaymentFlow>> };
+
+/**
+ * The full attest → verify → deliver → (optional) fire pipeline for an XRPL/BTC/DOGE
+ * payment, given a chain + transaction id. Shared by the `/v1/attest/payment` HTTP
+ * route and the passive XRPL watcher (`services/xrplWatcher.ts`) so both paths stay
+ * identical rather than drifting.
+ */
+export async function attestPayment(
+  store: Store,
+  flare: FlareContext,
+  signingSecret: string,
+  input: {
+    topicUri: string;
+    chain: "xrp" | "btc" | "doge";
+    txHash: string;
+    amount?: string;
+    deliver?: boolean;
+    fireOnChain?: boolean;
+    waitRounds?: number;
+  },
+): Promise<AttestPaymentResult> {
+  const live = await livePaymentFlow(flare, {
+    chain: input.chain,
+    transactionId: input.txHash,
+    submit: true,
+    waitRounds: input.waitRounds,
+  });
+
+  const proofFound = Boolean(live.proof?.response && live.proof.proof?.length);
+  if (!proofFound) {
+    return { status: "pending_proof", error: "FDC Payment proof not finalized", fdc: live };
+  }
+
+  const event = await recordPaymentEvent(store, {
+    topicUri: input.topicUri,
+    txHash: input.txHash,
+    amount: input.amount,
+    proofResponse: live.proof?.response ?? {},
+  });
+
+  const deliveries = input.deliver !== false ? await deliverToSubscribers(store, event, signingSecret) : [];
+
+  let onChain: FireResult | null;
+  if (input.fireOnChain) {
+    try {
+      const proofHex = encodePaymentProof({
+        response: live.proof!.response!,
+        proof: live.proof!.proof!,
+      });
+      onChain = await fireEventOnChain(flare, event, { proofHex });
+    } catch (encodeErr) {
+      onChain = {
+        ok: false,
+        error: `Proof encoding failed: ${encodeErr instanceof Error ? encodeErr.message : String(encodeErr)}`,
+      };
+    }
+  } else {
+    onChain = await fireEventOnChain(flare, event);
+  }
+
+  return { status: "recorded", event, fdc: live, deliveries, onChain };
 }
 
 export async function recordFtsoEvent(
