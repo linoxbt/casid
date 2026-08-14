@@ -389,7 +389,13 @@ app.post("/v1/attest/ftso", async (c) => {
       deliveries = await deliverToSubscribers(store, event, SIGNING_SECRET);
     }
     const onChain = body.fireOnChain ? await fireEventOnChain(flare, event, { proofHex: encodeProofPayload(event) }) : null;
-    return c.json({ event, deliveries, observedPrice: observed, ftso: live, onChain });
+    return c.json({
+      event,
+      deliveries,
+      observedPrice: observed,
+      ftso: { feedId: live.feedId, value: live.value.toString(), timestamp: live.timestamp.toString() },
+      onChain,
+    });
   } catch (e) {
     return c.json({ error: e instanceof Error ? e.message : String(e) }, 400);
   }
