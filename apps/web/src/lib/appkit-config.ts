@@ -22,7 +22,17 @@ export const coston2 = defineChain({
   testnet: true,
 }) as unknown as AppKitNetwork;
 
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "";
+// WalletConnect's QR/relay flow needs a real Reown Cloud project id, but
+// createAppKit() itself must run unconditionally and can't be skipped —
+// useAppKit() (called by WalletProvider, which wraps every page, including
+// statically prerendered ones) throws synchronously if createAppKit() never
+// ran, and that throw can't be caught around the hook call without tripping
+// react-hooks/rules-of-hooks. So: fall back to a placeholder id when
+// NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID isn't set (CI, a fresh clone, a
+// misconfigured preview). Injected-wallet connections work fine either way;
+// only the WalletConnect QR path would fail, visibly, at connect time.
+export const hasWalletConnect = Boolean(process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID);
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "0".repeat(32);
 
 export const wagmiAdapter = new WagmiAdapter({
   networks: [coston2],
@@ -30,26 +40,18 @@ export const wagmiAdapter = new WagmiAdapter({
   ssr: true,
 });
 
-// createAppKit() must run unconditionally, including during SSR/SSG — the
-// `ssr: true` WagmiAdapter option above makes that safe, and useAppKit()
-// (called by WalletProvider, which wraps every page including statically
-// prerendered ones) throws if createAppKit() hasn't run yet. Only guard on
-// the project id being configured (see .env.example), so a preview build
-// without it doesn't crash.
-if (projectId) {
-  createAppKit({
-    adapters: [wagmiAdapter],
-    networks: [coston2],
-    defaultNetwork: coston2,
-    projectId,
-    metadata: {
-      name: "Casid",
-      description: "Verified economic event fabric for Flare",
-      url: "https://casid.netlify.app",
-      icons: ["https://casid.netlify.app/icon.svg"],
-    },
-    features: { analytics: false, email: false, socials: [] },
-  });
-}
+createAppKit({
+  adapters: [wagmiAdapter],
+  networks: [coston2],
+  defaultNetwork: coston2,
+  projectId,
+  metadata: {
+    name: "Casid",
+    description: "Verified economic event fabric for Flare",
+    url: "https://casid.netlify.app",
+    icons: ["https://casid.netlify.app/icon.svg"],
+  },
+  features: { analytics: false, email: false, socials: [] },
+});
 
 export const wagmiConfig = wagmiAdapter.wagmiConfig;

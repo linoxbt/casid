@@ -6,7 +6,7 @@ import { getWalletClient as wagmiGetWalletClient } from "@wagmi/core";
 import { useAppKit } from "@reown/appkit/react";
 import type { Address } from "viem";
 import { COSTON2_CHAIN_ID } from "@/lib/wallet";
-import { wagmiConfig } from "@/lib/appkit-config";
+import { hasWalletConnect, wagmiConfig } from "@/lib/appkit-config";
 
 interface WalletState {
   address: Address | null;
@@ -30,6 +30,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const connect = useMemo(
     () => async () => {
       setError(null);
+      if (!hasWalletConnect) {
+        setError("Wallet connect isn't fully configured (missing NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) — injected wallets may still work.");
+      }
       try {
         await open();
       } catch (e) {
