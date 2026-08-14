@@ -83,7 +83,7 @@ const ENDPOINTS = [
   { method: "GET", path: "/v1/events", desc: "List verified events, most recent first. Query: ?limit=" },
   { method: "GET", path: "/v1/deliveries", desc: "List webhook delivery attempts and their status. Query: ?limit=" },
   { method: "POST", path: "/v1/attest/payment", desc: "Verify a real XRP/BTC/DOGE transaction against a PAYMENT topic via live FDC. Body: { topicUri, txHash, amount?, deliver?, fireOnChain?, waitRounds? }. Returns 202 with status: \"pending_proof\" while the DA Layer proof is still finalizing." },
-  { method: "POST", path: "/v1/attest/ftso", desc: "Read a live FTSOv2 price and evaluate an FTSO_THRESHOLD topic. Body: { topicUri, deliver?, fireOnChain? }. See Known limitations — fireOnChain is not yet supported for this topic kind." },
+  { method: "POST", path: "/v1/attest/ftso", desc: "Read a live FTSOv2 price and evaluate an FTSO_THRESHOLD topic. Body: { topicUri, deliver?, fireOnChain? }. fireOnChain routes through TriggerExecutor.fireFtsoThreshold, the dedicated on-chain entrypoint for threshold reads (no FDC proof required)." },
   { method: "POST", path: "/v1/composition/evaluate", desc: "Evaluate a COMPOSITION topic's AND/OR over its children's recent events. Body: { topicUri, windowMs? }." },
   { method: "POST", path: "/v1/fdc/prepare/address-validity", desc: "Prepare (no gas) an AddressValidity attestation request against Flare's live testnet verifier. Body: { address }." },
   { method: "POST", path: "/v1/fdc/prepare/payment", desc: "Prepare (no gas) a Payment attestation request for an existing transaction. Body: { chain, transactionId, inUtxo? }." },
@@ -407,35 +407,10 @@ export default function DocsPage() {
         Known limitations
       </h2>
       <p className="muted" style={{ margin: "0 0 1rem", lineHeight: 1.6 }}>
-        Documented here deliberately, not hidden — these are real, current gaps, not
-        hypothetical edge cases.
+        Documented here deliberately, not hidden — this is a real, current gap, not a
+        hypothetical edge case.
       </p>
       <div className="list">
-        <div className="list-item">
-          <strong>FTSO threshold events cannot fire on-chain yet.</strong>
-          <p className="muted" style={{ margin: "0.4rem 0 0", lineHeight: 1.5 }}>
-            <code className="mono">POST /v1/attest/ftso</code> with{" "}
-            <code className="mono">fireOnChain: true</code> reverts with{" "}
-            <code className="mono">ProofVerifier.UnsupportedAttestationType()</code>.{" "}
-            <code className="mono">ProofVerifier</code>/<code className="mono">TriggerExecutor</code>&apos;s{" "}
-            <code className="mono">fireWithProof</code> path was built for FDC-attested proofs (a
-            real Merkle proof, e.g. a Payment) — an FTSO threshold read has no such proof, it&apos;s a
-            direct on-chain price comparison, so routing it through the same
-            attestation-type-gated verifier doesn&apos;t hold up. Off-chain verification and signed
-            webhook delivery for FTSO topics are fully live and unaffected; only the optional
-            on-chain trigger fire is broken. Fixing this needs a dedicated on-chain
-            FTSO-threshold verification path, not a quick patch.
-          </p>
-        </div>
-        <div className="list-item">
-          <strong>No persistent database volume on the hosted coordinator.</strong>
-          <p className="muted" style={{ margin: "0.4rem 0 0", lineHeight: 1.5 }}>
-            SQLite lives on the Railway container&apos;s ephemeral filesystem. A redeploy wipes
-            topics, subscriptions, events, and deliveries back to the two seed topics. Fine for a
-            testnet demo backend; would need a mounted volume or Postgres before anything durable
-            depends on this data surviving a deploy.
-          </p>
-        </div>
         <div className="list-item">
           <strong>FAsset and EVM-transaction topics register but don&apos;t verify live.</strong>
           <p className="muted" style={{ margin: "0.4rem 0 0", lineHeight: 1.5 }}>
@@ -498,17 +473,17 @@ export default function DocsPage() {
           <ul className="pipeline">
             <li>Topic DSL + registry (TS + Solidity)</li>
             <li>Live FDC request, submit, and DA proof polling</li>
-            <li>FTSO threshold path against live Flare feeds</li>
+            <li>FTSO threshold path against live Flare feeds, on-chain and off</li>
             <li>HMAC webhooks + dashboard</li>
+            <li>Persistent storage (mounted Railway volume)</li>
             <li>Foundry suite for anti-replay &amp; compositions</li>
           </ul>
         </div>
         <div className="card">
           <h3>Production path</h3>
           <ul className="pipeline">
-            <li>On-chain FTSO-threshold verification path</li>
-            <li>Persistent storage (mounted volume or Postgres) + queue workers</li>
             <li>Live FAsset lifecycle + EVM-transaction attestation</li>
+            <li>Postgres + queue workers for higher write volume</li>
             <li>Topic marketplace + enterprise private topics</li>
             <li>Decentralized coordinators</li>
           </ul>

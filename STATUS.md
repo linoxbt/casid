@@ -67,27 +67,27 @@ the DA Layer's real response into `IPayment.Proof` and is wired into
 Both the off-chain FDC verification that gates Unlock's reveal and the
 on-chain proof consumption are fully live end-to-end.
 
-## Live deployment (2026-08-13)
+## Live deployment (2026-08-13, infra fixed 2026-08-14)
 - Coordinator: Railway project `noble-achievement`, service `casid` —
   https://casid-production.up.railway.app (`/health`, `/v1/meta`)
 - Web: Netlify (`netlify.toml`, `apps/web`)
-- GitHub autodeploy on the Railway service was found disabled (pushes to
-  `main` weren't triggering redeploys) — that, not an account-wide limit,
-  was the actual cause of "Failed to fetch" on the live site. Reconfirmed
-  2026-08-13 15:22 UTC: pushing `152c6dc` to `main` did not trigger a new
-  Railway deployment (`list-deployments` still showed only `69ad1f9`), and
-  `railway redeploy` just re-runs the *last known* deployment's snapshot
-  rather than pulling the new commit. Until autodeploy is re-enabled in the
-  dashboard, ship new commits with `railway up --service casid` from the
-  repo root (uploads the local working tree directly) after every push to
-  `main`.
-- Netlify (`casid` site) *does* autodeploy correctly on push to `main` — no
-  workaround needed there.
-- **No persistent volume on the Railway coordinator service** — SQLite
-  (`./data/casid.db`) lives on the container's ephemeral filesystem, so every
-  redeploy (including `railway up`) wipes all topics/subscriptions/events back
-  to the two hardcoded seed topics. Not yet worth a volume for a testnet demo
-  backend, but worth knowing before assuming demo data will survive a deploy.
+- **GitHub autodeploy: fixed 2026-08-14.** Was disabled (pushes to `main`
+  weren't triggering redeploys — `railway redeploy` only re-runs the last
+  known snapshot, doesn't pull new commits) — worked around for a while with
+  `railway up --service casid` after every push. Root-caused and fixed by
+  reconnecting the service's GitHub source (`railway service source connect
+  --repo linoxbt/casid --branch main --service casid`), which re-established
+  a working webhook — confirmed by pushing a commit immediately after and
+  watching Railway auto-build it with no manual `railway up`. The
+  `railway up` workaround is no longer needed; a plain `git push` is enough.
+- **Persistent volume: added 2026-08-14.** `railway volume add --mount-path
+  /data` (service `casid`), then `DATABASE_PATH=/data/casid.db` (was
+  `./data/casid.db`, on the container's ephemeral filesystem — every
+  redeploy used to wipe all topics/subscriptions/events back to the two seed
+  topics). Verified: created a real event, redeployed, event count stayed
+  at 1 instead of resetting to 0.
+- Netlify (`casid` site) autodeploys correctly on push to `main` — no
+  workaround ever needed there.
 
 ## FTSO threshold bugs found + fixed (2026-08-14)
 
@@ -109,19 +109,23 @@ Discovered while seeding demo data for a walkthrough video — `POST
 Both fixed and confirmed live: `POST /v1/attest/ftso` now returns a genuine
 verified event with a real observed price, proofHash, and eventCommitment.
 
-**Known remaining gap, not yet fixed:** `fireOnChain: true` on an FTSO
-threshold event reverts on-chain with `ProofVerifier.UnsupportedAttestationType()`
-(selector `0x96007a53`). `ProofVerifier`/`TriggerExecutor`'s `fireWithProof`
-path was built for FDC-attested proofs (typed `IPayment.Proof`, a real Merkle
-proof) — FTSO threshold events have no such proof, they're a direct on-chain
-price read compared to a threshold, so routing them through the same
-attestation-type-gated verifier doesn't make sense as-is. Fixing this needs
-either a dedicated on-chain FTSO-threshold verification path or a different
-firing mechanism — a real design task, not a quick patch. Off-chain
-verification + signed webhook delivery for FTSO topics is unaffected and
-fully live; only the optional on-chain trigger fire for this topic kind is
-broken. Demo/video scripts should not claim FTSO topics fire on-chain
-triggers until this is addressed.
+**On-chain firing: fixed 2026-08-14.** `fireOnChain: true` on an FTSO
+threshold event used to revert with `ProofVerifier.UnsupportedAttestationType()`
+(selector `0x96007a53`) — `fireEventOnChain` (`apps/coordinator/src/services/chain.ts`)
+always called `TriggerExecutor.fireWithProof`, which gates on
+`ProofVerifier.verifyAndConsume`, an FDC-attestation-type check FTSO events
+can never satisfy (they have no FDC proof — the threshold check itself, a
+live `FtsoV2` read, is the verification). `TriggerExecutor.fireFtsoThreshold`
+was already deployed for exactly this case (calls
+`ProofVerifier.consumeFtsoProof`, no attestation-type check) — its ABI was
+even already defined in `chain.ts`, just never called. `fireEventOnChain` now
+dispatches on `event.attestationType`, routing `FTSO_THRESHOLD` events
+through `fireFtsoThreshold` with the feed id, `TopicLib.CompareOp` index, and
+threshold (via `viem.parseUnits`, not floating-point math) extracted from the
+event payload. Verified live:
+[`0xc2c401e0…`](https://coston2-explorer.flare.network/tx/0xc2c401e0c425447ec9c76ce0450d38694e1494847d9e2a834628009c0132d4bb)
+— real Coston2 tx, `status: success`, calling `fireFtsoThreshold` on
+`TriggerExecutor`.
 
 ## Next (optional)
 1. ~~Push GitHub public repo~~ — done (`github.com/linoxbt/casid`)
