@@ -17,66 +17,37 @@ function WalletIcon() {
   );
 }
 
-export function WalletButton({ compact = false }: { compact?: boolean }) {
-  const { address, isConnecting, connect, disconnect, chainId, ensureCoston2, error, hasProvider } = useWallet();
+export function WalletButton() {
+  const { address, isConnecting, connect, disconnect, chainId, ensureCoston2, error } = useWallet();
 
   if (!address) {
-    if (!hasProvider) {
-      return (
-        <a
-          href="https://metamask.io/download/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-ghost wallet-btn"
-          title="No browser wallet detected — install one to connect"
-        >
-          <WalletIcon />
-          {!compact && "Get a wallet"}
-          {compact && <span className="wallet-badge" />}
-        </a>
-      );
-    }
     return (
-      <>
+      <div className="wallet-widget">
         <button
           type="button"
           className="btn btn-primary wallet-btn"
           onClick={() => void connect()}
           disabled={isConnecting}
-          title={error ?? "Connect wallet"}
         >
           <WalletIcon />
-          {!compact && (isConnecting ? "Connecting…" : "Connect wallet")}
-          {compact && error && <span className="wallet-badge" />}
+          {isConnecting ? "Connecting…" : "Connect wallet"}
         </button>
-        {!compact && error && <p className="wallet-error">{error}</p>}
-      </>
+        {error && <p className="wallet-error">{error}</p>}
+      </div>
     );
   }
 
   const wrongNetwork = chainId !== null && chainId !== COSTON2_CHAIN_ID;
 
-  if (compact) {
-    return (
-      <button type="button" className="btn btn-ghost wallet-btn" onClick={disconnect} title={short(address)}>
-        <span className={`wallet-dot ${wrongNetwork ? "warn" : ""}`} />
-      </button>
-    );
-  }
-
   return (
-    <div className="wallet-connected">
+    <div className="wallet-widget">
       {wrongNetwork && (
-        <button
-          type="button"
-          className="wallet-switch"
-          onClick={() => void ensureCoston2()}
-        >
+        <button type="button" className="wallet-switch" onClick={() => void ensureCoston2()}>
           Switch to Coston2
         </button>
       )}
       <button type="button" className="btn btn-ghost wallet-btn" onClick={disconnect} title="Disconnect">
-        <span className="wallet-dot" />
+        <span className={`wallet-dot ${wrongNetwork ? "warn" : ""}`} />
         {short(address)}
       </button>
     </div>

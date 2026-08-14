@@ -1,20 +1,18 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { createWalletClient, custom, type Address } from "viem";
-import {
-  COSTON2_ADD_CHAIN_PARAMS,
-  COSTON2_CHAIN_ID,
-  COSTON2_CHAIN_ID_HEX,
-  getInjectedProvider,
-} from "@/lib/wallet";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
+import { getWalletClient as wagmiGetWalletClient } from "@wagmi/core";
+import { useAppKit } from "@reown/appkit/react";
+import type { Address } from "viem";
+import { COSTON2_CHAIN_ID } from "@/lib/wallet";
+import { wagmiConfig } from "@/lib/appkit-config";
 
 interface WalletState {
   address: Address | null;
   chainId: number | null;
   isConnecting: boolean;
   error: string | null;
-  hasProvider: boolean;
   connect: () => Promise<void>;
   disconnect: () => void;
   ensureCoston2: () => Promise<void>;
@@ -23,98 +21,54 @@ interface WalletState {
 const WalletContext = createContext<WalletState | null>(null);
 
 export function WalletProvider({ children }: { children: ReactNode }) {
-  const [address, setAddress] = useState<Address | null>(null);
-  const [chainId, setChainId] = useState<number | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const { address, chainId, status } = useAccount();
+  const { disconnect: wagmiDisconnect } = useDisconnect();
+  const { switchChainAsync } = useSwitchChain();
+  const { open } = useAppKit();
   const [error, setError] = useState<string | null>(null);
-  const [hasProvider, setHasProvider] = useState(false);
 
-  useEffect(() => {
-    const provider = getInjectedProvider();
-    setHasProvider(Boolean(provider));
-    if (!provider) return;
-
-    // Reconnect silently if already authorized (no popup for eth_accounts).
-    provider
-      .request({ method: "eth_accounts" })
-      .then((accounts) => {
-        const list = accounts as string[];
-        if (list?.[0]) setAddress(list[0] as Address);
-      })
-      .catch(() => {});
-    provider
-      .request({ method: "eth_chainId" })
-      .then((id) => setChainId(Number.parseInt(id as string, 16)))
-      .catch(() => {});
-
-    const onAccountsChanged = (...args: unknown[]) => {
-      const accounts = args[0] as string[];
-      setAddress((accounts?.[0] as Address) ?? null);
-    };
-    const onChainChanged = (...args: unknown[]) => {
-      setChainId(Number.parseInt(args[0] as string, 16));
-    };
-    provider.on?.("accountsChanged", onAccountsChanged);
-    provider.on?.("chainChanged", onChainChanged);
-    return () => {
-      provider.removeListener?.("accountsChanged", onAccountsChanged);
-      provider.removeListener?.("chainChanged", onChainChanged);
-    };
-  }, []);
-
-  const connect = useCallback(async () => {
-    const provider = getInjectedProvider();
-    if (!provider) {
-      setError("No browser wallet found — install MetaMask or another injected wallet.");
-      return;
-    }
-    setError(null);
-    setIsConnecting(true);
-    try {
-      const accounts = (await provider.request({ method: "eth_requestAccounts" })) as string[];
-      if (accounts[0]) setAddress(accounts[0] as Address);
-      const id = (await provider.request({ method: "eth_chainId" })) as string;
-      setChainId(Number.parseInt(id, 16));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setIsConnecting(false);
-    }
-  }, []);
-
-  const disconnect = useCallback(() => {
-    setAddress(null);
-  }, []);
-
-  const ensureCoston2 = useCallback(async () => {
-    const provider = getInjectedProvider();
-    if (!provider) throw new Error("No browser wallet found.");
-    try {
-      await provider.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: COSTON2_CHAIN_ID_HEX }],
-      });
-    } catch (switchErr) {
-      const code = (switchErr as { code?: number })?.code;
-      if (code === 4902) {
-        await provider.request({
-          method: "wallet_addEthereumChain",
-          params: [COSTON2_ADD_CHAIN_PARAMS],
-        });
-      } else {
-        throw switchErr;
+  const connect = useMemo(
+    () => async () => {
+      setError(null);
+      try {
+        await open();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
       }
-    }
-    setChainId(COSTON2_CHAIN_ID);
-  }, []);
-
-  return (
-    <WalletContext.Provider
-      value={{ address, chainId, isConnecting, error, hasProvider, connect, disconnect, ensureCoston2 }}
-    >
-      {children}
-    </WalletContext.Provider>
+    },
+    [open],
   );
+
+  const disconnect = useMemo(() => () => wagmiDisconnect(), [wagmiDisconnect]);
+
+  const ensureCoston2 = useMemo(
+    () => async () => {
+      setError(null);
+      try {
+        await switchChainAsync({ chainId: COSTON2_CHAIN_ID });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        setError(message);
+        throw e;
+      }
+    },
+    [switchChainAsync],
+  );
+
+  const value = useMemo<WalletState>(
+    () => ({
+      address: (address as Address | undefined) ?? null,
+      chainId: chainId ?? null,
+      isConnecting: status === "connecting" || status === "reconnecting",
+      error,
+      connect,
+      disconnect,
+      ensureCoston2,
+    }),
+    [address, chainId, status, error, connect, disconnect, ensureCoston2],
+  );
+
+  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }
 
 export function useWallet(): WalletState {
@@ -123,9 +77,7 @@ export function useWallet(): WalletState {
   return ctx;
 }
 
-/** Wallet client bound to the injected provider, for sending a transaction. */
+/** Wallet client bound to the connected wagmi/Reown account, for sending a transaction. */
 export function getWalletClient(account: Address) {
-  const provider = getInjectedProvider();
-  if (!provider) throw new Error("No browser wallet found.");
-  return createWalletClient({ account, transport: custom(provider) });
+  return wagmiGetWalletClient(wagmiConfig, { account });
 }

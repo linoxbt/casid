@@ -78,15 +78,15 @@ export default function DashboardPage() {
           <span className="stat-card-label">Network</span>
           <span className="stat-card-value" style={{ fontSize: "1.05rem" }}>{network}</span>
         </div>
-        <div className="stat-card">
+        <div className="stat-card accent-green">
           <span className="stat-card-label">Verified events</span>
           <span className="stat-card-value">{eventsTotal}</span>
         </div>
-        <div className="stat-card">
+        <div className="stat-card accent-violet">
           <span className="stat-card-label">Delivered webhooks</span>
           <span className="stat-card-value">{delivered}</span>
         </div>
-        <div className="stat-card">
+        <div className="stat-card accent-warn">
           <span className="stat-card-label">Pending deliveries</span>
           <span className="stat-card-value">{deliveries.length - delivered}</span>
         </div>

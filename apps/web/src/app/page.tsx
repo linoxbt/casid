@@ -46,13 +46,13 @@ export default function LandingPage() {
       </header>
 
       <main>
-        <div className="hero-wrap">
+        <section className="hero-band">
           <div className="orb-field" aria-hidden="true">
             <div className="orb orb-1" />
             <div className="orb orb-2" />
           </div>
           <div className="page-frame">
-            <section className="hero-grid">
+            <div className="hero-grid">
               <p className="eyebrow">Flare-native · FDC verified</p>
               <h1>Get paid, unlock instantly.</h1>
               <p className="hero-copy">
@@ -62,19 +62,21 @@ export default function LandingPage() {
                 <Link className="btn btn-primary" href="/app/unlock">Try Unlock</Link>
                 <Link className="btn btn-ghost" href="/app">Casid infrastructure →</Link>
               </div>
-            </section>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <div className="capability-strip">
-          {capabilities.map((c) => (
-            <span className="pill" key={c}>{c}</span>
-          ))}
-        </div>
+        <section className="capability-band">
+          <div className="page-frame capability-strip">
+            {capabilities.map((c) => (
+              <span className="pill" key={c}>{c}</span>
+            ))}
+          </div>
+        </section>
 
-        <div className="page-frame">
-          <Reveal>
-            <section className="section-block centered">
+        <Reveal>
+          <section className="section-block">
+            <div className="page-frame">
               <div className="section-copy">
                 <p className="eyebrow">How it works</p>
                 <h2>No trust required.</h2>
@@ -94,11 +96,13 @@ export default function LandingPage() {
                   </Fragment>
                 ))}
               </div>
-            </section>
-          </Reveal>
+            </div>
+          </section>
+        </Reveal>
 
-          <Reveal>
-            <section className="section-block centered">
+        <Reveal>
+          <section className="section-block band">
+            <div className="page-frame">
               <div className="section-copy">
                 <p className="eyebrow">One model</p>
                 <h2>Every economic fact, one typed topic.</h2>
@@ -107,11 +111,13 @@ export default function LandingPage() {
                   <code className="mono">topic://ftso/price/{"{feed}"}/threshold/{"{op}"}/{"{value}"}</code>
                 </p>
               </div>
-            </section>
-          </Reveal>
+            </div>
+          </section>
+        </Reveal>
 
-          <Reveal>
-            <section className="section-block">
+        <Reveal>
+          <section className="section-block">
+            <div className="page-frame">
               <div className="section-copy">
                 <p className="eyebrow">Why Casid</p>
                 <h2>Verification, not indexing.</h2>
@@ -124,11 +130,13 @@ export default function LandingPage() {
                   </article>
                 ))}
               </div>
-            </section>
-          </Reveal>
+            </div>
+          </section>
+        </Reveal>
 
-          <Reveal>
-            <section className="section-block">
+        <Reveal>
+          <section className="section-block band">
+            <div className="page-frame">
               <div className="section-copy">
                 <p className="eyebrow">Verify it yourself</p>
                 <h2>Every claim, on-chain.</h2>
@@ -147,11 +155,13 @@ export default function LandingPage() {
                   </a>
                 ))}
               </div>
-            </section>
-          </Reveal>
+            </div>
+          </section>
+        </Reveal>
 
-          <Reveal>
-            <section className="section-block">
+        <Reveal>
+          <section className="section-block">
+            <div className="page-frame">
               <div className="section-copy">
                 <p className="eyebrow">Getting started</p>
                 <h2>Three steps to a verified event.</h2>
@@ -165,19 +175,23 @@ export default function LandingPage() {
                   </article>
                 ))}
               </div>
-            </section>
-          </Reveal>
+            </div>
+          </section>
+        </Reveal>
 
-          <Reveal>
-            <section className="cta-strip">
-              <div>
-                <p className="eyebrow">Operator flow</p>
-                <h2>Open the console and wire your first verified topic.</h2>
+        <Reveal>
+          <section className="section-block">
+            <div className="page-frame">
+              <div className="cta-strip">
+                <div>
+                  <p className="eyebrow">Operator flow</p>
+                  <h2>Open the console and wire your first verified topic.</h2>
+                </div>
+                <Link className="btn btn-primary" href="/app">Open dashboard</Link>
               </div>
-              <Link className="btn btn-primary" href="/app">Open dashboard</Link>
-            </section>
-          </Reveal>
-        </div>
+            </div>
+          </section>
+        </Reveal>
       </main>
 
       <footer className="site-footer">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ThemeProvider, themeInitScript } from "@/components/theme-provider";
 import { WalletProvider } from "@/components/wallet-context";
+import { AppKitProvider } from "@/components/appkit-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,7 +24,9 @@ export default function RootLayout({
       </head>
       <body>
         <ThemeProvider>
-          <WalletProvider>{children}</WalletProvider>
+          <AppKitProvider>
+            <WalletProvider>{children}</WalletProvider>
+          </AppKitProvider>
         </ThemeProvider>
       </body>
     </html>

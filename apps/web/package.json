@@ -9,10 +9,15 @@
     "lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings=0"
   },
   "dependencies": {
+    "@reown/appkit": "^1.8.23",
+    "@reown/appkit-adapter-wagmi": "^1.8.23",
+    "@tanstack/react-query": "^5.101.4",
+    "@wagmi/core": "^3.6.4",
     "next": "^15.3.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "viem": "^2.31.0"
+    "viem": "2.55.15",
+    "wagmi": "^3.7.6"
   },
   "devDependencies": {
     "@types/node": "^22.15.30",

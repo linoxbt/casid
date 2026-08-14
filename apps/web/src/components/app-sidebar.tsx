@@ -95,6 +95,10 @@ function Shell({ children }: { children: React.ReactNode }) {
   const { isCollapsed, toggleCollapsed, isMobileOpen, toggleMobileOpen, closeMobile } = useSidebar();
   const pathname = usePathname();
 
+  const current = nav.find((item) =>
+    item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href),
+  );
+
   return (
     <div className={`app-shell ${isCollapsed ? "collapsed" : ""}`}>
       <aside className={`app-sidebar ${isMobileOpen ? "mobile-open" : ""}`}>
@@ -126,37 +130,43 @@ function Shell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="app-sidebar-foot">
-          <WalletButton compact={isCollapsed} />
-          <div className="app-sidebar-foot-row">
-            <ThemeToggle />
-            <button
-              type="button"
-              className="app-sidebar-collapse"
-              onClick={toggleCollapsed}
-              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              <CollapseIcon collapsed={isCollapsed} />
-            </button>
-          </div>
+          <button
+            type="button"
+            className="app-sidebar-collapse"
+            onClick={toggleCollapsed}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <CollapseIcon collapsed={isCollapsed} />
+          </button>
         </div>
       </aside>
 
       {isMobileOpen && <div className="app-sidebar-backdrop" onClick={closeMobile} />}
 
       <div className="app-content">
-        <header className="app-mobile-bar">
-          <Link href="/" className="brand">
-            <LogoMark size={22} />
-            Casid
-          </Link>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <WalletButton compact />
-            <button type="button" className="btn btn-ghost app-mobile-toggle" aria-label="Open menu" onClick={toggleMobileOpen}>
+        <header className="app-topbar">
+          <div className="app-topbar-start">
+            <button
+              type="button"
+              className="app-topbar-menu"
+              aria-label="Open menu"
+              onClick={toggleMobileOpen}
+            >
               <MenuIcon />
             </button>
+            <Link href="/" className="brand app-topbar-brand">
+              <LogoMark size={20} />
+              Casid
+            </Link>
+            <span className="mono app-topbar-path">/ {current?.label.toLowerCase() ?? "app"}</span>
+          </div>
+          <div className="app-topbar-end">
+            <span className="pill app-topbar-network">Coston2 · 114</span>
+            <ThemeToggle />
+            <WalletButton />
           </div>
         </header>
-        <div className="page-frame">{children}</div>
+        <div className="app-page-frame">{children}</div>
       </div>
     </div>
   );

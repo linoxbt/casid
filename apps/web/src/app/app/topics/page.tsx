@@ -71,7 +71,7 @@ export default function TopicsPage() {
     try {
       if (chainId !== COSTON2_CHAIN_ID) await ensureCoston2();
       if (!TOPIC_REGISTRY_ADDRESS) throw new Error("NEXT_PUBLIC_TOPIC_REGISTRY_ADDRESS not configured.");
-      const wallet = getWalletClient(address);
+      const wallet = await getWalletClient(address);
       const txHash = await wallet.writeContract({
         address: TOPIC_REGISTRY_ADDRESS,
         abi: topicRegistryAbi,
