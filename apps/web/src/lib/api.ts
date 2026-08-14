@@ -105,6 +105,8 @@ export const api = {
       body: JSON.stringify({ topicUri }),
     }),
   topics: () => request<{ topics: Topic[] }>("/v1/topics"),
+  topic: (id: string) =>
+    request<{ topic: Topic; pipeline: string[] }>(`/v1/topics/${encodeURIComponent(id)}`),
   createTopic: (uri: string, createdBy?: string) =>
     request<{
       topic: Topic;

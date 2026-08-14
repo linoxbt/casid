@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { api, type Subscription, type Topic } from "@/lib/api";
 import { useWallet, getWalletClient } from "@/components/wallet-context";
 import { COSTON2_CHAIN_ID, TOPIC_REGISTRY_ADDRESS, topicRegistryAbi } from "@/lib/wallet";
@@ -205,7 +206,9 @@ export default function TopicsPage() {
                   Unsubscribe
                 </button>
               </header>
-              <div className="mono">{s.topicUri}</div>
+              <Link href={`/app/topics/${encodeURIComponent(s.topicUri)}`} className="mono proof-link">
+                {s.topicUri}
+              </Link>
               {s.webhookUrl && <div className="muted mono">{s.webhookUrl}</div>}
             </div>
           ))}
@@ -241,11 +244,23 @@ export default function TopicsPage() {
             onClick={() => setSelected(t.uri)}
           >
             <header>
-              <span className="pill">{t.kind}</span>
-              <span className="muted">
-                on-chain id {t.onChainId ?? "—"} · {t.active ? "active" : "off"}
-                {t.createdBy && ` · by ${shortAddr(t.createdBy)}`}
-              </span>
+              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                <span className="pill">{t.kind}</span>
+                <span className={`pill ${t.onChainId != null ? "success" : ""}`}>
+                  {t.onChainId != null ? `on-chain · id ${t.onChainId}` : "off-chain only"}
+                </span>
+                <span className={`pill ${t.active ? "success" : ""}`}>{t.active ? "active" : "off"}</span>
+                {t.createdBy && (
+                  <span className="pill mono" title={t.createdBy}>by {shortAddr(t.createdBy)}</span>
+                )}
+              </div>
+              <Link
+                href={`/app/topics/${t.id}`}
+                className="site-link"
+                onClick={(e) => e.stopPropagation()}
+              >
+                View details →
+              </Link>
             </header>
             <div className="mono">{t.uri}</div>
           </div>

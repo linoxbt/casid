@@ -1,23 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { api, type CasidEvent, type Delivery } from "@/lib/api";
 import { TopicsIcon, VerifyIcon, DocsIcon } from "@/components/app-sidebar";
+import { isOnChain } from "@/lib/onchain";
 
 function short(value?: string | null, size = 10) {
   if (!value) return "-";
   return value.length > size * 2 ? `${value.slice(0, size)}...${value.slice(-6)}` : value;
 }
 
-function explorerHref(event: CasidEvent) {
-  const candidate = event.payload.submitTx ?? event.payload.txHash ?? event.payload.onChainTx;
-  return typeof candidate === "string" && candidate.startsWith("0x")
-    ? `https://coston2-explorer.flare.network/tx/${candidate}`
-    : `https://coston2-explorer.flare.network/search-results?q=${encodeURIComponent(event.proofHash)}`;
-}
-
 export default function DashboardPage() {
+  const router = useRouter();
   const [events, setEvents] = useState<CasidEvent[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [health, setHealth] = useState("checking");
@@ -120,18 +116,32 @@ export default function DashboardPage() {
                   <th>Time</th>
                   <th>Type</th>
                   <th>Proof</th>
+                  <th>On-chain</th>
                   <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {events.map((event) => (
-                  <tr key={event.id}>
+                  <tr
+                    key={event.id}
+                    onClick={() => router.push(`/app/events/${event.id}`)}
+                    style={{ cursor: "pointer" }}
+                  >
                     <td className="muted">{new Date(event.createdAt).toLocaleTimeString()}</td>
                     <td><span className="pill success">{event.attestationType}</span></td>
                     <td className="mono">
-                      <a className="proof-link" href={explorerHref(event)} target="_blank" rel="noreferrer">
+                      <Link
+                        className="proof-link"
+                        href={`/app/events/${event.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {short(event.proofHash, 8)}
-                      </a>
+                      </Link>
+                    </td>
+                    <td>
+                      <span className={`pill ${isOnChain(event) ? "success" : ""}`}>
+                        {isOnChain(event) ? "on-chain" : "off-chain"}
+                      </span>
                     </td>
                     <td>
                       <span className="pill success">
@@ -141,7 +151,7 @@ export default function DashboardPage() {
                     </td>
                   </tr>
                 ))}
-                {events.length === 0 && <tr><td colSpan={4} className="muted">No proof-backed events recorded yet.</td></tr>}
+                {events.length === 0 && <tr><td colSpan={5} className="muted">No proof-backed events recorded yet.</td></tr>}
               </tbody>
             </table>
           </div>

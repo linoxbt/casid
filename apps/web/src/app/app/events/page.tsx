@@ -1,14 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api, type CasidEvent, type Delivery } from "@/lib/api";
-
-function explorerHref(event: CasidEvent) {
-  const candidate = event.payload.submitTx ?? event.payload.txHash ?? event.payload.onChainTx;
-  return typeof candidate === "string" && candidate.startsWith("0x")
-    ? `https://coston2-explorer.flare.network/tx/${candidate}`
-    : `https://coston2-explorer.flare.network/search-results?q=${encodeURIComponent(event.proofHash)}`;
-}
+import { isOnChain } from "@/lib/onchain";
 
 export default function EventsPage() {
   const [events, setEvents] = useState<CasidEvent[]>([]);
@@ -43,34 +38,22 @@ export default function EventsPage() {
       <h2 className="section-title">Events</h2>
       <div className="list">
         {events.map((e) => (
-          <div key={e.id} className="list-item">
+          <Link key={e.id} href={`/app/events/${e.id}`} className="list-item card-hover">
             <header>
-              <span className="pill success">{e.attestationType}</span>
+              <div style={{ display: "flex", gap: "0.4rem" }}>
+                <span className="pill success">{e.attestationType}</span>
+                <span className={`pill ${isOnChain(e) ? "success" : ""}`}>
+                  {isOnChain(e) ? "on-chain" : "off-chain"}
+                </span>
+              </div>
               <span className="muted">{new Date(e.createdAt).toLocaleString()}</span>
             </header>
             <div className="mono">{e.topicUri}</div>
             <div className="muted" style={{ marginTop: 8, fontSize: "0.82rem" }}>
               proof commitment
             </div>
-            <div className="mono">
-              <a className="proof-link" href={explorerHref(e)} target="_blank" rel="noreferrer">
-                {e.proofHash}
-              </a>
-            </div>
-            <div className="muted" style={{ marginTop: 8, fontSize: "0.82rem" }}>
-              payload
-            </div>
-            <pre
-              className="mono"
-              style={{
-                margin: "6px 0 0",
-                whiteSpace: "pre-wrap",
-                color: "var(--muted)",
-              }}
-            >
-              {JSON.stringify(e.payload, null, 2)}
-            </pre>
-          </div>
+            <div className="mono" style={{ wordBreak: "break-all" }}>{e.proofHash}</div>
+          </Link>
         ))}
         {events.length === 0 && (
           <div className="card muted">No events yet. Submit a finalized FDC Payment proof or verify an FTSO threshold.</div>
@@ -99,7 +82,11 @@ export default function EventsPage() {
                     {d.status}
                   </span>
                 </td>
-                <td className="mono">{d.eventId.slice(0, 8)}…</td>
+                <td className="mono">
+                  <Link href={`/app/events/${d.eventId}`} className="proof-link">
+                    {d.eventId.slice(0, 8)}…
+                  </Link>
+                </td>
                 <td>{d.attempts}</td>
                 <td className="mono">
                   {d.signature ? `${d.signature.slice(0, 28)}…` : "—"}
