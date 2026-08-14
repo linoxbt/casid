@@ -55,3 +55,36 @@ export function addressPlaceholder(chain: PaymentChain): string {
       return "DYourDogeAddress...";
   }
 }
+
+// XRP/BTC/DOGE transaction hashes are all the same shape: 32 bytes of hex,
+// with or without a 0x prefix — unlike destination addresses, which differ
+// per chain.
+const TX_HASH_RE = /^(0x)?[0-9a-fA-F]{64}$/;
+
+function looksLikeAnAddress(value: string): PaymentChain | "evm" | null {
+  if (EVM_RE.test(value)) return "evm";
+  for (const chain of Object.keys(CHAIN_PATTERNS) as PaymentChain[]) {
+    if (CHAIN_PATTERNS[chain].re.test(value)) return chain;
+  }
+  return null;
+}
+
+/**
+ * Returns an error message if the value doesn't look like a real
+ * transaction hash, or null if it's valid. Specifically catches the
+ * easy-to-make mistake of pasting the destination *address* (shown right
+ * above this field on the pay page) instead of the transaction id.
+ */
+export function validateTxHash(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return "Paste the transaction id for your payment.";
+  const asAddress = looksLikeAnAddress(trimmed);
+  if (asAddress) {
+    const what = asAddress === "evm" ? "an EVM wallet address" : `a ${CHAIN_PATTERNS[asAddress].label} wallet address`;
+    return `That's ${what}, not a transaction id. Send the payment first, then paste the transaction hash from your wallet or a block explorer — not the destination address.`;
+  }
+  if (!TX_HASH_RE.test(trimmed)) {
+    return "That doesn't look like a transaction id — it should be a 64-character hex string (with or without a 0x prefix), copied from your wallet or a block explorer after sending the payment.";
+  }
+  return null;
+}

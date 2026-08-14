@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { validateTxHash } from "@/lib/chain-address";
 
 function PayFlow() {
   const params = useSearchParams();
@@ -21,8 +22,9 @@ function PayFlow() {
   async function verify() {
     setErr(null);
     setPending(false);
-    if (!txHash.trim()) {
-      setErr("Paste the transaction id for your payment.");
+    const txError = validateTxHash(txHash);
+    if (txError) {
+      setErr(txError);
       return;
     }
     setBusy(true);
@@ -85,9 +87,13 @@ function PayFlow() {
           <input
             value={txHash}
             onChange={(e) => setTxHash(e.target.value)}
-            placeholder="Paste your transaction id"
+            placeholder="64-character transaction hash, not the address above"
             className="mono"
           />
+          <span className="muted" style={{ fontSize: "0.76rem", fontWeight: 400 }}>
+            The hash of the payment transaction itself — from your wallet or a block explorer
+            after sending it, not the destination address shown above.
+          </span>
         </label>
         <button className="btn btn-primary" onClick={verify} disabled={busy}>
           {busy ? "Verifying…" : "I've paid — verify"}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, type Topic } from "@/lib/api";
+import { validateTxHash } from "@/lib/chain-address";
 
 function useSubmission() {
   const [busy, setBusy] = useState(false);
@@ -131,7 +132,8 @@ function PaymentCard({ topics, onSettled }: { topics: Topic[]; onSettled: () => 
     setMsg(null);
     run(async () => {
       if (!topicUri) throw new Error("Create a payment topic first.");
-      if (!txHash.trim()) throw new Error("txHash is required for FDC Payment attestation.");
+      const txError = validateTxHash(txHash);
+      if (txError) throw new Error(txError);
       const res = await api.attestPayment({
         topicUri,
         txHash: txHash.trim(),
@@ -169,7 +171,7 @@ function PaymentCard({ topics, onSettled }: { topics: Topic[]; onSettled: () => 
           <input
             value={txHash}
             onChange={(e) => setTxHash(e.target.value)}
-            placeholder="Real XRP/BTC/DOGE transaction id"
+            placeholder="64-character transaction hash — not a wallet address"
             className="mono"
           />
         </label>
