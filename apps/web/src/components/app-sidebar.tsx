@@ -73,6 +73,13 @@ function MenuIcon() {
     </svg>
   );
 }
+function FaucetIcon() {
+  return (
+    <svg viewBox="0 0 18 18" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 2.5c2.3 3 3.8 5.4 3.8 7.3a3.8 3.8 0 1 1-7.6 0c0-1.9 1.5-4.3 3.8-7.3Z" />
+    </svg>
+  );
+}
 
 const nav = [
   { href: "/app", label: "Dashboard", icon: DashboardIcon },
@@ -162,6 +169,16 @@ function Shell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="app-topbar-end">
             <span className="pill app-topbar-network">Coston2 · 114</span>
+            <a
+              className="pill app-topbar-faucet"
+              href="https://faucet.flare.network/coston2"
+              target="_blank"
+              rel="noreferrer"
+              title="Get free Coston2 testnet C2FLR"
+            >
+              <FaucetIcon />
+              Faucet
+            </a>
             <ThemeToggle />
             <WalletButton />
           </div>
