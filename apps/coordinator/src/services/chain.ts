@@ -11,10 +11,12 @@ import {
   type Hex,
   keccak256,
   parseEther,
+  parseUnits,
   stringToHex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { FlareContext } from "./flare";
+import { feedIdFromSymbol } from "./flare";
 import type { AttestedEvent } from "@casid/core";
 
 // Mirrors IPayment.Proof from contracts/src/interfaces/IPayment.sol exactly —
@@ -309,6 +311,68 @@ function toBytes32(hexOrHash: string): Hex {
   return keccak256(stringToHex(hexOrHash));
 }
 
+// Mirrors contracts/src/libraries/TopicLib.sol's CompareOp enum order exactly.
+const COMPARE_OP_INDEX: Record<string, number> = { gt: 0, gte: 1, lt: 2, lte: 3, eq: 4 };
+
+/**
+ * FTSO_THRESHOLD events have no FDC proof to verify — the threshold check
+ * itself IS the on-chain verification (TriggerExecutor reads FtsoV2 live and
+ * reverts if the threshold isn't currently met). Routing them through
+ * fireWithProof's FDC-attestation-gated ProofVerifier.verifyAndConsume was
+ * always going to revert with UnsupportedAttestationType; fireFtsoThreshold
+ * is the real on-chain entrypoint built for this, calling
+ * ProofVerifier.consumeFtsoProof (no attestation-type check) instead.
+ */
+async function fireFtsoThresholdOnChain(
+  ctx: FlareContext,
+  event: AttestedEvent,
+  topicId: bigint,
+  subId: bigint,
+  eventCommitment: Hex,
+): Promise<FireResult> {
+  const executor = ctx.casid.triggerExecutor as Address;
+  const feed = String(event.payload.feed ?? "");
+  const op = String(event.payload.op ?? "gte").toLowerCase();
+  const threshold = String(event.payload.threshold ?? "0");
+  const feedId = feedIdFromSymbol(feed);
+  const opIndex = COMPARE_OP_INDEX[op] ?? 1;
+  const thresholdWei = parseUnits(threshold, 18);
+
+  const signer = requireAccount(ctx);
+  if (!signer) {
+    return {
+      ok: true,
+      mode: "dry_run",
+      call: {
+        contract: executor,
+        method: "fireFtsoThreshold",
+        args: {
+          topicId: topicId.toString(),
+          subId: subId.toString(),
+          feedId,
+          op: opIndex,
+          thresholdWei: thresholdWei.toString(),
+          eventCommitment,
+        },
+      },
+    };
+  }
+
+  try {
+    const txHash = await signer.wallet.writeContract({
+      address: executor,
+      abi: triggerExecutorAbi,
+      functionName: "fireFtsoThreshold",
+      args: [topicId, subId, feedId, opIndex, thresholdWei, eventCommitment, "0x"],
+      chain: null,
+      account: signer.account,
+    });
+    return { ok: true, mode: "live", txHash };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export async function fireEventOnChain(
   ctx: FlareContext,
   event: AttestedEvent,
@@ -321,7 +385,7 @@ export async function fireEventOnChain(
       mode: "dry_run",
       call: {
         contract: null,
-        method: "fireWithProof",
+        method: event.attestationType === "FTSO_THRESHOLD" ? "fireFtsoThreshold" : "fireWithProof",
         reason: "TRIGGER_EXECUTOR_ADDRESS not set",
         topicId: event.topicId,
         proofHash: event.proofHash,
@@ -333,12 +397,17 @@ export async function fireEventOnChain(
 
   const topicId = BigInt(event.topicId ?? 0);
   const subId = BigInt(opts?.subId ?? 0);
+  const eventCommitment = toBytes32(event.eventCommitment);
+
+  if (event.attestationType === "FTSO_THRESHOLD") {
+    return fireFtsoThresholdOnChain(ctx, event, topicId, subId, eventCommitment);
+  }
+
   const attestationType = kindToBytes32(event.attestationType);
   const proof =
     opts?.proofHex ??
     (`0x${Buffer.from(JSON.stringify(event.payload)).toString("hex")}` as Hex);
   const proofHash = toBytes32(event.proofHash);
-  const eventCommitment = toBytes32(event.eventCommitment);
 
   const signer = requireAccount(ctx);
   if (!signer) {
