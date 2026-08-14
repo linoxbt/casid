@@ -55,10 +55,10 @@
 
 ## 2:20–2:45 — Wallet-signed, on-chain, and verifiable
 
-**SCREEN:** Click "Connect wallet" in the top bar — open the Reown modal, connect. Point at the network pill ("Coston2 · 114"). Go to Events, show a delivered webhook and its signed proof hash linking to the explorer.
+**SCREEN:** Click "Connect wallet" in the top bar — open the Reown modal, connect. Point at the network pill ("Coston2 · 114"). Go to Events, show a delivered webhook. Click through on a **payment** event's proof link specifically (not an FTSO one — see note below) to the Coston2 explorer.
 
 **VO:**
-> Wallet connect is built on Reown, so it works with any injected wallet or WalletConnect-compatible app on mobile — not just one browser extension. Once connected, you can sign topic registration yourself instead of relying on Casid's relay key. And every verified event carries a proof hash you can take straight to the Coston2 explorer and check yourself. Nothing here asks you to trust us.
+> Wallet connect is built on Reown, so it works with any injected wallet or WalletConnect-compatible app on mobile — not just one browser extension. Once connected, you can sign topic registration yourself instead of relying on Casid's relay key. And a payment event's proof isn't just a claim — click through and you're looking at the actual on-chain trigger transaction on the Coston2 explorer. Nothing here asks you to trust us.
 
 ---
 
@@ -78,3 +78,5 @@
 - Have a real Coston2 testnet XRP transaction id ready before recording the Unlock segment (Casid does not accept fabricated tx ids — the FDC verification is real).
 - If a wallet extension isn't installed in the recording environment, the Reown modal still opens and shows the WalletConnect QR path — that's fine to show instead of a full connect.
 - Keep cuts on scene boundaries only; mid-sentence cuts will fight the VO pacing above.
+- **Known limitation, do not demo this:** on-chain trigger firing (`fireOnChain: true`) only works for Payment-type proofs right now. FTSO threshold events verify and deliver correctly (real price, real proofHash, real webhook), but firing one on-chain reverts (`ProofVerifier.UnsupportedAttestationType` — see STATUS.md). If demoing Verify's FTSO tab, don't click through to an explorer link for that event; use a payment event for the on-chain proof.
+- Demo topics/subscriptions/events were seeded live on the coordinator (7 topics across all 4 kinds, 5 subscriptions, a couple of real verified FTSO events) so Topics/Events/dashboard aren't empty — but the coordinator has no persistent storage (ephemeral container filesystem), so a redeploy between now and recording will wipe it back to 2 seed topics. Check `GET https://casid-production.up.railway.app/health` right before recording; if counts are back to `2/0/0/0`, ask to have it reseeded.

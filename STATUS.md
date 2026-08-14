@@ -83,6 +83,45 @@ on-chain proof consumption are fully live end-to-end.
   `main`.
 - Netlify (`casid` site) *does* autodeploy correctly on push to `main` — no
   workaround needed there.
+- **No persistent volume on the Railway coordinator service** — SQLite
+  (`./data/casid.db`) lives on the container's ephemeral filesystem, so every
+  redeploy (including `railway up`) wipes all topics/subscriptions/events back
+  to the two hardcoded seed topics. Not yet worth a volume for a testnet demo
+  backend, but worth knowing before assuming demo data will survive a deploy.
+
+## FTSO threshold bugs found + fixed (2026-08-14)
+
+Discovered while seeding demo data for a walkthrough video — `POST
+/v1/attest/ftso` had never actually been exercised live before:
+
+1. **Feed id encoding** (`apps/coordinator/src/services/flare.ts`,
+   `feedIdFromSymbol`): the fallback (no `FTSO_FEED_*` env override set)
+   encoded raw UTF-8 of the feed name with no category byte, so every live
+   Coston2 read reverted `feed does not exist`. Flare's real FtsoV2 registry
+   wants `bytes21` = 1 category byte (`0x01` for crypto) + the feed name,
+   zero-padded — fixed to match the example already documented in
+   `.env.example`.
+2. **BigInt serialization crash**: `readFtsoPriceWei`'s `value`/`timestamp`
+   are raw `bigint`; spreading them straight into `c.json()` crashed with
+   `JSON.stringify cannot serialize BigInt`, masking that fix #1 had actually
+   worked. Now stringified explicitly before the response.
+
+Both fixed and confirmed live: `POST /v1/attest/ftso` now returns a genuine
+verified event with a real observed price, proofHash, and eventCommitment.
+
+**Known remaining gap, not yet fixed:** `fireOnChain: true` on an FTSO
+threshold event reverts on-chain with `ProofVerifier.UnsupportedAttestationType()`
+(selector `0x96007a53`). `ProofVerifier`/`TriggerExecutor`'s `fireWithProof`
+path was built for FDC-attested proofs (typed `IPayment.Proof`, a real Merkle
+proof) — FTSO threshold events have no such proof, they're a direct on-chain
+price read compared to a threshold, so routing them through the same
+attestation-type-gated verifier doesn't make sense as-is. Fixing this needs
+either a dedicated on-chain FTSO-threshold verification path or a different
+firing mechanism — a real design task, not a quick patch. Off-chain
+verification + signed webhook delivery for FTSO topics is unaffected and
+fully live; only the optional on-chain trigger fire for this topic kind is
+broken. Demo/video scripts should not claim FTSO topics fire on-chain
+triggers until this is addressed.
 
 ## Next (optional)
 1. ~~Push GitHub public repo~~ — done (`github.com/linoxbt/casid`)
