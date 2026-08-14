@@ -5,6 +5,14 @@ import Link from "next/link";
 import { api, type Subscription, type Topic } from "@/lib/api";
 import { useWallet, getWalletClient } from "@/components/wallet-context";
 import { COSTON2_CHAIN_ID, TOPIC_REGISTRY_ADDRESS, topicRegistryAbi } from "@/lib/wallet";
+import { validateChainAddress, type PaymentChain } from "@/lib/chain-address";
+
+/** topic://payment/{chain}/{destination} — extracts chain+destination if the URI is a payment topic. */
+function parsePaymentTopic(uri: string): { chain: PaymentChain; dest: string } | null {
+  const m = uri.trim().match(/^topic:\/\/payment\/(xrp|btc|doge)\/(.+)$/i);
+  if (!m) return null;
+  return { chain: m[1]!.toLowerCase() as PaymentChain, dest: m[2]! };
+}
 
 function shortAddr(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -48,8 +56,16 @@ export default function TopicsPage() {
     setMsg(null);
     setErr(null);
     setPendingOnChain(null);
+    const trimmedUri = uri.trim();
+    const payment = parsePaymentTopic(trimmedUri);
+    if (payment) {
+      const addressError = validateChainAddress(payment.chain, payment.dest);
+      if (addressError) {
+        setErr(addressError);
+        return;
+      }
+    }
     try {
-      const trimmedUri = uri.trim();
       const res = await api.createTopic(trimmedUri, address ?? undefined);
       setMsg(`Topic ready: ${res.topic.uri}`);
       if (res.onChainParams) {

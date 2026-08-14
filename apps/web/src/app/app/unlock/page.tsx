@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { addressHint, addressPlaceholder, validateChainAddress, type PaymentChain } from "@/lib/chain-address";
 
 const CHAINS = [
   { value: "xrp", label: "XRP (XRPL)" },
@@ -10,7 +11,7 @@ const CHAINS = [
 ];
 
 export default function CreateGatePage() {
-  const [chain, setChain] = useState("xrp");
+  const [chain, setChain] = useState<PaymentChain>("xrp");
   const [dest, setDest] = useState("");
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,8 +22,9 @@ export default function CreateGatePage() {
   async function submit() {
     setErr(null);
     setLink(null);
-    if (!dest.trim()) {
-      setErr("Enter the address you want payments sent to.");
+    const addressError = validateChainAddress(chain, dest);
+    if (addressError) {
+      setErr(addressError);
       return;
     }
     if (!secret.trim()) {
@@ -67,7 +69,7 @@ export default function CreateGatePage() {
           <div className="form">
             <label>
               Chain
-              <select value={chain} onChange={(e) => setChain(e.target.value)}>
+              <select value={chain} onChange={(e) => setChain(e.target.value as PaymentChain)}>
                 {CHAINS.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
@@ -78,9 +80,13 @@ export default function CreateGatePage() {
               <input
                 value={dest}
                 onChange={(e) => setDest(e.target.value)}
-                placeholder="rYourXRPLAddress..."
+                placeholder={addressPlaceholder(chain)}
                 className="mono"
               />
+              <span className="muted" style={{ fontSize: "0.76rem", fontWeight: 400 }}>
+                {addressHint(chain)} Not an EVM (0x…) address — {chain.toUpperCase()} is a
+                separate, non-EVM chain.
+              </span>
             </label>
             <label>
               What unlocks when payment arrives
