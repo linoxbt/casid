@@ -155,20 +155,25 @@ export async function resolveFlareContext(): Promise<FlareContext> {
 }
 
 /**
- * Encode FTSO feed id as bytes21.
- * Crypto feeds often use hex category 01 + feed name; for local development we also accept
- * the MockFtsoV2 style of bytes21(bytes("XRP/USD")).
+ * Encode FTSO feed id as bytes21: 1 category byte (0x01 for crypto) + the
+ * feed name in ASCII, zero-padded to fill the remaining 20 bytes. This is
+ * Flare's real FtsoV2 registry format — e.g. XRP/USD is
+ * 0x015852502f55534400000000000000000000000000. The previous fallback
+ * encoded raw UTF-8 with no category byte, which only ever matched a local
+ * MockFtsoV2 seeded the same wrong way — every live Coston2 read reverted
+ * with "feed does not exist".
  */
-export function feedIdFromSymbol(feed: string): `0x${string}` {
+export function feedIdFromSymbol(feed: string, category = 0x01): `0x${string}` {
   // Prefer explicit env mapping: FTSO_FEED_XRP_USD=0x...
   const envKey = `FTSO_FEED_${feed.replace("/", "_").toUpperCase()}`;
   const fromEnv = process.env[envKey];
   if (fromEnv?.startsWith("0x")) return fromEnv as `0x${string}`;
 
-  // bytes21 left-padded UTF-8 of feed name (matches our mock / deploy seed)
-  const bytes = new TextEncoder().encode(feed);
-  const hex = Buffer.from(bytes).toString("hex").padEnd(42, "0").slice(0, 42);
-  return `0x${hex}`;
+  const nameBytes = new TextEncoder().encode(feed);
+  const bytes21 = new Uint8Array(21);
+  bytes21[0] = category;
+  bytes21.set(nameBytes.subarray(0, 20), 1);
+  return `0x${Buffer.from(bytes21).toString("hex")}`;
 }
 
 export async function readFtsoPriceWei(
